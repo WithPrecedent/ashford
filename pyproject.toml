@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "ashford"
+version = "0.1.10"
+description = "factory, registration, and validation tools for python"
+authors = ["corey rayburn yung <coreyrayburnyung@gmail.com>"]
+license = "Apache-2.0"
+readme = "README.md"
+homepage = "https://github.com/WithPrecedent/ashford"
+repository = "https://github.com/WithPrecedent/ashford"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+camina = ["^0.1.0"]
+miller = ["^0.1.5"]
+
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

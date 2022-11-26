@@ -1,5 +1,5 @@
 """
-registries: classes and functions for registration
+registry: classes and functions for registration
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2022, Corey Rayburn Yung
 License: Apache-2.0

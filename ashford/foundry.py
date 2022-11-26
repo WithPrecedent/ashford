@@ -17,7 +17,7 @@ License: Apache-2.0
     limitations under the License.
 
 Contents:   
-    BaseFactory (ABC): base class for ashford factory mixins. It requires 
+    BaseFactory (abc.ABC): base class for ashford factory mixins. It requires 
         subclasses have a 'create' classmethod.
     InstanceFactory (BaseFactory): mixin that stores all subclass instances in 
         the 'instances' class attribute and returns stored instances when the 
@@ -67,14 +67,15 @@ class BaseFactory(abc.ABC):
     def create(
         cls,
         source: Any, 
-        **kwargs: Any) -> Union[Type[BaseFactory], BaseFactory]:
+        **kwargs: Any) -> Type[BaseFactory] | BaseFactory:
         """Returns a subclass or subclass instance.
 
         Args:
             source (Any): argument indicating creation method to use.
 
         Returns:
-            BaseFactory: instance of a SourceFactory.
+            Type[BaseFactory] | BaseFactory: subclass or subclass instance of 
+                SourceFactory.
             
         """
         pass
@@ -84,7 +85,7 @@ class BaseFactory(abc.ABC):
 class InstanceFactory(BaseFactory):
     """Mixin which automatically registers and stores subclass instances.
     
-    Args:
+    Attributes:
         instances (ClassVar[camina.Catalog]): catalog of subclass instances.
             
     """
@@ -97,7 +98,7 @@ class InstanceFactory(BaseFactory):
         # Because InstanceFactory is used as a mixin, it is important to
         # call other base class '__init_subclass__' methods, if they exist.
         with contextlib.suppress(AttributeError):
-            super().__post_init__(*args, **kwargs) # type: ignore
+            super().__post_init__() # type: ignore
         key = camina.namify(item = self)
         self.__class__.instances[key] = self
         
@@ -165,7 +166,7 @@ class LibraryFactory(BaseFactory):
     they are used to either initialize a subclass or added to an instance as
     attributes.
     
-    Args:
+    Attributes:
         library (ClassVar[camina.Library]): library of subclasses and 
             instances. 
             
@@ -188,7 +189,7 @@ class LibraryFactory(BaseFactory):
             
     def __post_init__(self) -> None:
         with contextlib.suppress(AttributeError):
-            super().__post_init__(*args, **kwargs) # type: ignore
+            super().__post_init__() # type: ignore
         key = camina.namify(item = self)
         self.__class__.library.deposit(item = self, name = key)
     
@@ -227,7 +228,7 @@ class SourceFactory(BaseFactory, abc.ABC):
     type passed to a subtype of the type listed as a key in the 'sources' class
     attribute.
     
-    Args:
+    Attributes:
         sources (Type, str]]): keys are types of the data sources for object 
             creation. Values are the corresponding str name of the type which
             should have a class method called 'from_{str name of type}'. Because
@@ -286,7 +287,7 @@ class SourceFactory(BaseFactory, abc.ABC):
 
 @dataclasses.dataclass
 class StealthFactory(BaseFactory):
-    """Mixin that returns a subclass without requiring a new attribute.
+    """Mixin that returns a subclass without requiring a storage attribute.
     
     Unlike typical factories, this one does not require an additional class 
     attribute to be added to store registered subclasses. Instead, it relies on
@@ -331,7 +332,7 @@ class SubclassFactory(BaseFactory):
     deepcopy of a stored subclass so that any modifications to a retrieved
     subclass are not applied to future retrieved subclasses.
     
-    Args:
+    Attributes:
         subclasses (ClassVar[camina.Catalog]): project catalog of subclasses.
             
     """
@@ -425,7 +426,7 @@ class TypeFactory(BaseFactory, abc.ABC):
 # class RegistrarFactory(registries.Registrar, abc.ABC):
 #     """Mixin which automatically registers subclasses for use by a factory.
     
-#     Args:
+#     Attributes:
 #         registry (ClassVar[MutableMapping[str, Type[Any]]]): key names are str
 #             names of a subclass (snake_case by default) and values are the 
 #             subclasses. Defaults to an empty dict.  

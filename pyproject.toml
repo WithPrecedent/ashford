@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ashford"
-version = "0.1.10"
+version = "0.1.1"
 description = "factory, registration, and validation tools for python"
 authors = ["corey rayburn yung <coreyrayburnyung@gmail.com>"]
 license = "Apache-2.0"
@@ -10,8 +10,8 @@ repository = "https://github.com/WithPrecedent/ashford"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-camina = ["^0.1.0"]
-miller = ["^0.1.5"]
+camina = ["^0.1.10"]
+miller = ["^0.1.6"]
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ashford"
-version = "0.1.1"
+version = "0.1.2"
 description = "factory, registration, and validation tools for python"
 authors = ["corey rayburn yung <coreyrayburnyung@gmail.com>"]
 license = "Apache-2.0"

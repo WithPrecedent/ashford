@@ -41,7 +41,7 @@ class FileManager(ashford.Keystone):
     pass
 
     
-def test_foundation():
+def test_unified():
     assert hasattr(ashford.Keystones, 'file_manager') 
     assert hasattr(ashford.Keystones, 'settings')
     assert not hasattr(ashford.Keystones, 'configuration')
@@ -54,5 +54,5 @@ def test_foundation():
     return
  
 if __name__ == '__main__':
-    test_foundation()
+    test_unified()
    

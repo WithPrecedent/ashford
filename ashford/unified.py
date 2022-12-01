@@ -1,5 +1,5 @@
 """
-core: package-level registration and factory system
+unified: package-level registration and factory system
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2022, Corey Rayburn Yung
 License: Apache-2.0
@@ -279,10 +279,9 @@ class Keystone(abc.ABC):
         """Returns a subclass instance based on passed arguments.
 
         The reason for requiring a 'create' classmethod is that it allows for
-        classes to gather information from 'project' needed for the instance,
-        but not to necessarily maintain a permanent link to a Project instance.
-        This facilitates loose coupling and easier serialization of project
-        workflows without complex interdependence.
+        classes to gather objects needed for the instance, but not to 
+        necessarily maintain permanent links to other objects. This facilitates 
+        loose coupling and easier serialization without complex interdependence.
         
         Args:
             name (Optional[str]): name or key to lookup a subclass.

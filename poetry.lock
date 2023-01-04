@@ -24,7 +24,7 @@ tests_no_zope = ["cloudpickle", "hypothesis", "mypy (>=0.971,<0.990)", "pympler"
 
 [[package]]
 name = "camina"
-version = "0.1.10"
+version = "0.1.11"
 description = "Your Python project companion"
 category = "main"
 optional = false
@@ -133,7 +133,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "9df5f3b04c28eba8125593aa08aba56415368253db8d46300f3ab63e25ef054e"
+content-hash = "e0f021edbde43c4fdf53c9dcec536ff743a9d4e28e94b7f93b92f40b20861f2f"
 
 [metadata.files]
 atomicwrites = [
@@ -144,8 +144,8 @@ attrs = [
     {file = "attrs-22.2.0.tar.gz", hash = "sha256:c9227bfc2f01993c03f68db37d1d15c9690188323c067c641f1a35ca58185f99"},
 ]
 camina = [
-    {file = "camina-0.1.10-py3-none-any.whl", hash = "sha256:e86ae436b9246a21808d0766038f2d6ce1533c0998b1b07fa6a6e5f4f444eade"},
-    {file = "camina-0.1.10.tar.gz", hash = "sha256:6c8e36903c9f7aea53ce73270a797c2b68b251a2d72f57823d393363bfa9d2a1"},
+    {file = "camina-0.1.11-py3-none-any.whl", hash = "sha256:7e15f1663256a9222ac7766ca1c5028e1f0b8658389f7a2a7da20937576edfd5"},
+    {file = "camina-0.1.11.tar.gz", hash = "sha256:ee1f2f1b9bea1464a9a584286dd2d1cbbc607e4a69a4deddea1d4aacfc654fb7"},
 ]
 colorama = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},

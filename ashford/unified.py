@@ -1,5 +1,5 @@
 """
-core: package-level registration and factory system
+unified: package-level registration and factory system
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2022, Corey Rayburn Yung
 License: Apache-2.0
@@ -42,9 +42,9 @@ class Keystones(abc.ABC):
     """Stores Keystone subclasses.
     
     For each Keystone, a class attribute is added with the snakecase name of 
-    that Keystone. In that class attribute, a dict-like object (determined by
-    'default_factory') is the value and it stores all Keystone subclasses of 
-    that type (again using snakecase names as keys).
+    that Keystone. In that class attribute, an camina.Dictionary is the value 
+    and it stores all Keystone subclasses of that type (again using snakecase 
+    names as keys).
     
     Attributes:
         bases (ClassVar[camina.Dictionary]): dictionary of all direct Keystone 
@@ -53,15 +53,12 @@ class Keystones(abc.ABC):
         defaults (ClassVar[camina.Dictionary]): dictionary of the default class
             for each of the Keystone subclasses. Keys are snakecase names of the
             base type and values are Keystone subclasses.
-        default_factory (ClassVar[Type[MutableMapping]]): dict-like class used
-            to store Keystone subclasses. Defaults to camina.Dictionary.
         All direct Keystone subclasses will have an attribute name added
         dynamically.
         
     """
     bases: ClassVar[camina.Dictionary] = camina.Dictionary()
     defaults: ClassVar[camina.Dictionary] = camina.Dictionary()
-    default_factory: ClassVar[Type[MutableMapping]] = camina.Dictionary
         
     """ Public Methods """
     
@@ -76,18 +73,15 @@ class Keystones(abc.ABC):
         """
         name = cls._get_name(item = item)
         cls.bases[name] = item
-        setattr(cls, name, cls.default_factory())
-        # Automatically sets cls to the default option if it is concrete.
+        setattr(cls, name, camina.Dictionary())
         if abc.ABC not in item.__bases__:
             cls.set_default(item = item, base = name)
-        # Otherwise the default is set to None (if there is no previously 
-        # assigned default option).
-        elif name not in cls.defaults:
+        else:
             cls.defaults[name] = None
         return
     
     @classmethod
-    def classify(cls, item: str | Type[Keystone] | Keystone) -> str:
+    def classify(cls, item: str | Type[Keystone] | Keystone) ->str:
         """Returns the str name of the Keystone of which 'item' is.
 
         Args:
@@ -105,8 +99,8 @@ class Keystones(abc.ABC):
         """
         if isinstance(item, str):
             for key in cls.bases.keys():
-                subtype_library = getattr(cls, key)
-                for name in subtype_library.keys():
+                subtype_dict = getattr(cls, key)
+                for name in subtype_dict.keys():
                     if item == name:
                         return key
         else:
@@ -258,14 +252,7 @@ class Keystones(abc.ABC):
          
 @dataclasses.dataclass
 class Keystone(abc.ABC):
-    """Mixin for core package base classes.
-    
-    Attributes:
-        library (ClassVar[Type[Keystones]]: library where Keystone subclasses 
-            are stored.
-            
-    """
-    library: ClassVar[Type[Keystones]] = Keystones
+    """Mixin for core package base classes."""
 
     """ Initialization Methods """
     
@@ -276,14 +263,10 @@ class Keystone(abc.ABC):
         # other base class '__init_subclass__' methods, if they exist.
         with contextlib.suppress(AttributeError):
             super().__init_subclass__(*args, **kwargs) # type: ignore
-        # If 'cls' is a direct subclass of Keystone, it is added as a new type
-        # within 'library'.
         if Keystone in cls.__bases__:
-            cls.library.add(item = cls)
-        # If 'cls' is not a direct subclass of Keystone (meaning that Keystone
-        # is not an immediate parent), then cls is registered in 'library'.
+            Keystones.add(item = cls)
         else:
-            cls.library.register(item = cls)
+            Keystones.register(item = cls)
             
     """ Required Subclass Methods """
     
@@ -307,24 +290,3 @@ class Keystone(abc.ABC):
             
         """
         pass 
-
-    """ Class Methods """
-    
-    @classmethod
-    def set_library(cls, library: Type[Keystones]) -> None:
-        """Assigns 'library' class attribute to 'library'.
-        
-        Args:
-            library (Keystones): library to store Keystone instance. This must
-                be a subclass (not an instance) of Keystones to ensure 
-                compatibiliy. 
-            
-        Raises:
-            TypeError: if 'library' is not a subclass of Keystones.
-            
-        """
-        if issubclass(library, Keystones):
-            cls.library = library
-        else:
-            raise TypeError('library must be a subclass of Keystones')
-        return

@@ -17,24 +17,24 @@ License: Apache-2.0
     limitations under the License.
 
 Contents:   
-    BaseFactory (abc.ABC): base class for ashford factory mixins. It requires 
+    base.Factory (abc.ABC): base class for ashford factory mixins. It requires 
         subclasses have a 'create' classmethod.
-    InstanceFactory (BaseFactory): mixin that stores all subclass instances in 
+    InstanceFactory (base.Factory): mixin that stores all subclass instances in 
         the 'instances' class attribute and returns stored instances when the 
         'create' classmethod is called.
-    LibraryFactory (BaseFactory): mixin that stores all subclasses and 
+    LibraryFactory (base.Factory): mixin that stores all subclasses and 
         subclass instances in the 'library' class attribute and returns stored 
         subclasses and/or instances when the 'create' classmethod is called.
-    SourceFactory (BaseFactory): mixin that calls the appropriate creation 
+    SourceFactory (base.Factory): mixin that calls the appropriate creation 
         method based on the type of passed first argument to 'create' and the
         types stored in the keys of the 'sources' class attribute.
-    StealthFactory (BaseFactory): mixin that returns stored subclasses when the 
+    StealthFactory (base.Factory): mixin that returns stored subclasses when the 
         'create' classmethod is called without having a 'subclasses' class 
         attribute like SubclassFactory.
-    SubclassFactory (BaseFactory): mixin that stores all subclasses in the 
+    SubclassFactory (base.Factory): mixin that stores all subclasses in the 
         'subclasses' class attribute and returns stored subclasses when the 
         'create' classmethod is called.
-    TypeFactory (BaseFactory): mixin that calls the appropriate creation 
+    TypeFactory (base.Factory): mixin that calls the appropriate creation 
         method based on the type of passed first argument to 'create' and the
         snakecase name of the type. This factory is prone to significant 
         key errors unless you are sure of the snakecase names of all possible 
@@ -56,33 +56,71 @@ from typing import Any, ClassVar, Optional, Type, Union
 
 import camina
 
- 
+from . import base
+from . import registry
+
+
 @dataclasses.dataclass
-class BaseFactory(abc.ABC):
-    """Base class for factory mixins."""
+class CombinedFactory(registry.CombinedRegistrar, base.Factory):
+    """Mixin which automatically registers and stores subclasses and instances.
     
-    """ Required Subclass Methods """
-
-    @abc.abstractclassmethod
-    def create(
-        cls,
-        source: Any, 
-        **kwargs: Any) -> Type[BaseFactory] | BaseFactory:
-        """Returns a subclass or subclass instance.
-
-        Args:
-            source (Any): argument indicating creation method to use.
-
-        Returns:
-            Type[BaseFactory] | BaseFactory: subclass or subclass instance of 
-                SourceFactory.
+    When the 'create' method is called on this class, a matching subclass is
+    sought first. If no matching subclass is found, subclass instances are 
+    searched. In either case, an instance is returned. If kwargs are passed,
+    they are used to either initialize a subclass or added to an instance as
+    attributes.
+    
+    Attributes:
+        library (ClassVar[camina.Library]): library of subclasses and 
+            instances. 
             
-        """
-        pass
+    """
+    library: ClassVar[camina.Library] = camina.Library()
+    
+    """ Initialization Methods """
+    
+    @classmethod
+    def __init_subclass__(cls, *args: Any, **kwargs: Any):
+        """Automatically registers subclass."""
+        # Because LibraryFactory is used as a mixin, it is important to
+        # call other base class '__init_subclass__' methods, if they exist.
+        try:
+            super().__init_subclass__(*args, **kwargs) # type: ignore
+        except AttributeError:
+            pass
+        name = camina.namify(cls)
+        cls.library.deposit(item = cls, name = name)
+            
+    def __post_init__(self) -> None:
+        with contextlib.suppress(AttributeError):
+            super().__post_init__() # type: ignore
+        key = camina.namify(self)
+        self.__class__.library.deposit(item = self, name = key)
+    
+    """ Public Methods """
 
-   
+    @classmethod
+    def create(
+        cls, 
+        source: str, 
+        **kwargs: Any) -> CombinedFactory:
+        """Creates an instance of a LibraryFactory subclass from 'source'.
+        
+        Args:
+            source (Any): any supported data structure which acts as a source 
+                for creating a LibraryFactory or a str which matches a key in 
+                'library'.
+                                
+        Returns:
+            LibraryFactory: a LibraryFactory subclass instance created based 
+                on 'source' and any passed arguments.
+                
+        """
+        return cls.library.withdraw(source, **kwargs)
+
+
 @dataclasses.dataclass
-class InstanceFactory(BaseFactory):
+class InstanceFactory(base.Factory):
     """Mixin which automatically registers and stores subclass instances.
     
     Attributes:
@@ -99,7 +137,7 @@ class InstanceFactory(BaseFactory):
         # call other base class '__init_subclass__' methods, if they exist.
         with contextlib.suppress(AttributeError):
             super().__post_init__() # type: ignore
-        key = camina.namify(item = self)
+        key = camina.namify(self)
         self.__class__.instances[key] = self
         
     """ Public Methods """
@@ -155,68 +193,9 @@ class InstanceFactory(BaseFactory):
                 setattr(instance, key, value)
         return instance   
 
-
-@dataclasses.dataclass
-class LibraryFactory(BaseFactory):
-    """Mixin which automatically registers and stores subclasses and instances.
-    
-    When the 'create' method is called on this class, a matching subclass is
-    sought first. If no matching subclass is found, subclass instances are 
-    searched. In either case, an instance is returned. If kwargs are passed,
-    they are used to either initialize a subclass or added to an instance as
-    attributes.
-    
-    Attributes:
-        library (ClassVar[camina.Library]): library of subclasses and 
-            instances. 
-            
-    """
-    library: ClassVar[camina.Library] = camina.Library()
-    
-    """ Initialization Methods """
-    
-    @classmethod
-    def __init_subclass__(cls, *args: Any, **kwargs: Any):
-        """Automatically registers subclass."""
-        # Because LibraryFactory is used as a mixin, it is important to
-        # call other base class '__init_subclass__' methods, if they exist.
-        try:
-            super().__init_subclass__(*args, **kwargs) # type: ignore
-        except AttributeError:
-            pass
-        name = camina.namify(item = cls)
-        cls.library.deposit(item = cls, name = name)
-            
-    def __post_init__(self) -> None:
-        with contextlib.suppress(AttributeError):
-            super().__post_init__() # type: ignore
-        key = camina.namify(item = self)
-        self.__class__.library.deposit(item = self, name = key)
-    
-    """ Public Methods """
-
-    @classmethod
-    def create(
-        cls, 
-        source: str, 
-        **kwargs: Any) -> LibraryFactory:
-        """Creates an instance of a LibraryFactory subclass from 'source'.
-        
-        Args:
-            source (Any): any supported data structure which acts as a source 
-                for creating a LibraryFactory or a str which matches a key in 
-                'library'.
-                                
-        Returns:
-            LibraryFactory: a LibraryFactory subclass instance created based 
-                on 'source' and any passed arguments.
-                
-        """
-        return cls.library.withdraw(source, **kwargs)
-
                    
 @dataclasses.dataclass
-class SourceFactory(BaseFactory, abc.ABC):
+class SourceFactory(base.Factory, abc.ABC):
     """Mixin that returns subclasses using 'sources' class attribute.
 
     Unlike typical factories, this one does not require an additional class 
@@ -286,7 +265,7 @@ class SourceFactory(BaseFactory, abc.ABC):
       
 
 @dataclasses.dataclass
-class StealthFactory(BaseFactory):
+class StealthFactory(base.Factory):
     """Mixin that returns a subclass without requiring a storage attribute.
     
     Unlike typical factories, this one does not require an additional class 
@@ -317,7 +296,7 @@ class StealthFactory(BaseFactory):
             
         """
         options = {
-            camina.snakify(item = s.__name__): s for s in cls.__subclasses__}
+            camina.snakify(s.__name__): s for s in cls.__subclasses__}
         try:
             return options[source]
         except KeyError:
@@ -325,7 +304,7 @@ class StealthFactory(BaseFactory):
         
 
 @dataclasses.dataclass
-class SubclassFactory(BaseFactory):
+class SubclassFactory(base.Factory):
     """Mixin which automatically registers and stores subclasses.
     
     The reason this is a factory and not a mere registry is that it returns a
@@ -347,7 +326,7 @@ class SubclassFactory(BaseFactory):
         # call other base class '__init_subclass__' methods, if they exist.
         with contextlib.suppress(AttributeError):
             super().__init_subclass__(*args, **kwargs) # type: ignore
-        name = camina.namify(item = cls)
+        name = camina.namify(cls)
         cls.subclasses[name] = cls
     
     """ Public Methods """
@@ -368,7 +347,7 @@ class SubclassFactory(BaseFactory):
                     
                             
 @dataclasses.dataclass
-class TypeFactory(BaseFactory, abc.ABC):
+class TypeFactory(base.Factory, abc.ABC):
     """Mixin that returns subclass using the type or str name of the type.
 
     Unlike typical factories, this one does not require an additional class 
@@ -400,7 +379,7 @@ class TypeFactory(BaseFactory, abc.ABC):
             TypeFactory: instance of a TypeFactory.
             
         """
-        suffix = camina.snakify(item = str(type(source)))
+        suffix = camina.snakify(str(type(source)))
         method_name = cls._get_create_method_name(item = suffix)
         try:
             method = getattr(cls, method_name)
@@ -456,7 +435,7 @@ class TypeFactory(BaseFactory, abc.ABC):
 #             except KeyError:
 #                 pass
 #         try:
-#             name = trait.namify(item = item)
+#             name = trait.namify(item)
 #             return cls.registry[name](item, **kwargs)
 #         except KeyError:
 #             for name, kind in cls.registry.items():

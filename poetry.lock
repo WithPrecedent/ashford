@@ -24,14 +24,14 @@ tests_no_zope = ["cloudpickle", "hypothesis", "mypy (>=0.971,<0.990)", "pympler"
 
 [[package]]
 name = "camina"
-version = "0.1.11"
+version = "0.1.15"
 description = "Your Python project companion"
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 
 [package.dependencies]
-miller = ">=0.1.5,<0.2.0"
+miller = ">=0.1.7,<0.2.0"
 
 [[package]]
 name = "colorama"
@@ -43,15 +43,15 @@ python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7
 
 [[package]]
 name = "miller"
-version = "0.1.6"
+version = "0.1.8"
 description = "introspection tools using consistent, accessible syntax"
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 
 [package.dependencies]
-camina = ">=0.1.10,<0.2.0"
-nagata = ">=0.1.3,<0.2.0"
+camina = ">=0.1.15,<0.2.0"
+nagata = ">=0.1.5,<0.2.0"
 
 [[package]]
 name = "more-itertools"
@@ -63,19 +63,19 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "nagata"
-version = "0.1.4"
+version = "0.1.5"
 description = "python file management using a common, intuitive syntax"
 category = "main"
 optional = false
 python-versions = ">=3.9,<4.0"
 
 [package.dependencies]
-camina = ">=0.1.10,<0.2.0"
-miller = ">=0.1.4,<0.2.0"
+camina = ">=0.1.12,<0.2.0"
+miller = ">=0.1.7,<0.2.0"
 
 [[package]]
 name = "packaging"
-version = "22.0"
+version = "23.0"
 description = "Core utilities for Python packages"
 category = "dev"
 optional = false
@@ -124,8 +124,16 @@ testing = ["argcomplete", "hypothesis (>=3.56)", "mock", "nose", "requests", "xm
 
 [[package]]
 name = "wcwidth"
-version = "0.2.5"
+version = "0.2.6"
 description = "Measures the displayed width of unicode strings in a terminal"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "yapf"
+version = "0.32.0"
+description = "A formatter for Python code."
 category = "dev"
 optional = false
 python-versions = "*"
@@ -133,7 +141,7 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "e0f021edbde43c4fdf53c9dcec536ff743a9d4e28e94b7f93b92f40b20861f2f"
+content-hash = "97957c90aa43756a68879f1729c796ba0d3dbee5f22804af19d1fae0edb228a1"
 
 [metadata.files]
 atomicwrites = [
@@ -144,28 +152,28 @@ attrs = [
     {file = "attrs-22.2.0.tar.gz", hash = "sha256:c9227bfc2f01993c03f68db37d1d15c9690188323c067c641f1a35ca58185f99"},
 ]
 camina = [
-    {file = "camina-0.1.11-py3-none-any.whl", hash = "sha256:7e15f1663256a9222ac7766ca1c5028e1f0b8658389f7a2a7da20937576edfd5"},
-    {file = "camina-0.1.11.tar.gz", hash = "sha256:ee1f2f1b9bea1464a9a584286dd2d1cbbc607e4a69a4deddea1d4aacfc654fb7"},
+    {file = "camina-0.1.15-py3-none-any.whl", hash = "sha256:f9c6552baf85498a99556aea2c4857cd2d03f10702a4fc98b596e2d5f27623af"},
+    {file = "camina-0.1.15.tar.gz", hash = "sha256:e6140962e1be89b0f84fbb2d643e3c583fd9e731632a2c66cb6143593b32fd10"},
 ]
 colorama = [
     {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
     {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
 ]
 miller = [
-    {file = "miller-0.1.6-py3-none-any.whl", hash = "sha256:8983a0fc27e1ebd9d7be15e1261e4ff9c2d5814e07f337c485d25cd9d2ac2deb"},
-    {file = "miller-0.1.6.tar.gz", hash = "sha256:f0c61ed4f8323f8fe2611f0b0f5b14c3381e973513b84c32d5f6e1053ea8e509"},
+    {file = "miller-0.1.8-py3-none-any.whl", hash = "sha256:78c8edd577005833cabeb4a7d24b9abed9d5b65966a60e9ab82e8596e9dacd3e"},
+    {file = "miller-0.1.8.tar.gz", hash = "sha256:65896480a53a60d7365f99fc6e13fd4bef7cdc43bfeb3a4289ed7b5dab846527"},
 ]
 more-itertools = [
     {file = "more-itertools-9.0.0.tar.gz", hash = "sha256:5a6257e40878ef0520b1803990e3e22303a41b5714006c32a3fd8304b26ea1ab"},
     {file = "more_itertools-9.0.0-py3-none-any.whl", hash = "sha256:250e83d7e81d0c87ca6bd942e6aeab8cc9daa6096d12c5308f3f92fa5e5c1f41"},
 ]
 nagata = [
-    {file = "nagata-0.1.4-py3-none-any.whl", hash = "sha256:ee9a165ff2b868ea9d934f5750d20f845766d680ea85b00e7b7b0a6c5a6fede9"},
-    {file = "nagata-0.1.4.tar.gz", hash = "sha256:3c8303a5406b6177c81ddac4545cc0fc112095826509462f2b1a49f4ff137101"},
+    {file = "nagata-0.1.5-py3-none-any.whl", hash = "sha256:2acab0910316995e6ac3e027af0505b29f2ce39e206f45859a18cbb5c12b08a5"},
+    {file = "nagata-0.1.5.tar.gz", hash = "sha256:291064744273e82cecbf8165b067f2698a49e57dc85c7dfc35189c9a0a5f7bdd"},
 ]
 packaging = [
-    {file = "packaging-22.0-py3-none-any.whl", hash = "sha256:957e2148ba0e1a3b282772e791ef1d8083648bc131c8ab0c1feba110ce1146c3"},
-    {file = "packaging-22.0.tar.gz", hash = "sha256:2198ec20bd4c017b8f9717e00f0c8714076fc2fd93816750ab48e2c41de2cfd3"},
+    {file = "packaging-23.0-py3-none-any.whl", hash = "sha256:714ac14496c3e68c99c29b00845f7a2b85f3bb6f1078fd9f72fd20f0570002b2"},
+    {file = "packaging-23.0.tar.gz", hash = "sha256:b6ad297f8907de0fa2fe1ccbd26fdaf387f5f47c7275fedf8cce89f99446cf97"},
 ]
 pluggy = [
     {file = "pluggy-0.13.1-py2.py3-none-any.whl", hash = "sha256:966c145cd83c96502c3c3868f50408687b38434af77734af1e9ca461a4081d2d"},
@@ -180,6 +188,10 @@ pytest = [
     {file = "pytest-5.4.3.tar.gz", hash = "sha256:7979331bfcba207414f5e1263b5a0f8f521d0f457318836a7355531ed1a4c7d8"},
 ]
 wcwidth = [
-    {file = "wcwidth-0.2.5-py2.py3-none-any.whl", hash = "sha256:beb4802a9cebb9144e99086eff703a642a13d6a0052920003a230f3294bbe784"},
-    {file = "wcwidth-0.2.5.tar.gz", hash = "sha256:c4d647b99872929fdb7bdcaa4fbe7f01413ed3d98077df798530e5b04f116c83"},
+    {file = "wcwidth-0.2.6-py2.py3-none-any.whl", hash = "sha256:795b138f6875577cd91bba52baf9e445cd5118fd32723b460e30a0af30ea230e"},
+    {file = "wcwidth-0.2.6.tar.gz", hash = "sha256:a5220780a404dbe3353789870978e472cfe477761f06ee55077256e509b156d0"},
+]
+yapf = [
+    {file = "yapf-0.32.0-py2.py3-none-any.whl", hash = "sha256:8fea849025584e486fd06d6ba2bed717f396080fd3cc236ba10cb97c4c51cf32"},
+    {file = "yapf-0.32.0.tar.gz", hash = "sha256:a3f5085d37ef7e3e004c4ba9f9b3e40c54ff1901cd111f05145ae313a7c67d1b"},
 ]

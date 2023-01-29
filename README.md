@@ -1,8 +1,6 @@
 [![made-with-python](https://img.shields.io/badge/Made%20with-Python-1f425f.svg)](https://www.python.org/) [![PyPI Latest Release](https://img.shields.io/pypi/v/ashford.svg)](https://pypi.org/project/ashford/) [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Documentation Status](https://readthedocs.org/projects/ashford/badge/?version=latest)](http://ashford.readthedocs.io/?badge=latest)
 
 
-
-
 # Why ashford?
 
 This package provides classes and decorators for a variety of Python implementations of registration, factories, and type validators.
@@ -25,6 +23,7 @@ This package provides classes and decorators for a variety of Python implementat
 <p align="center">
 <img src="https://media.giphy.com/media/pKEF7XmUlRGFayOyLJ/giphy.gif" height="300"/>
 </p>
+
 * `InstanceFactory`: mixin that stores all subclass instances in the `instances` class attribute and returns stored instances when the `create` classmethod is called.
 * `LibraryFactory`: mixin that stores all subclasses and subclass instances in the `library` class attribute and returns stored subclasses and/or instances when the `create` classmethod is called.
 * `SourceFactory`: mixin that calls the appropriate creation method based on the type of passed first argument to `create` and the types stored in the keys of the `sources` class attribute.

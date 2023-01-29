@@ -432,16 +432,58 @@ class Keystones(camina.ChainDictionary):
   
          
 @dataclasses.dataclass
-class Keystone(construction.CombinedFactory):
+class Keystone(abc.ABC):
     """Mixin for core package base classes.
     
     Attributes:
-        registry (ClassVar[Keystones[str, object | Type[Any]]]): 
-            stores subclasses and instances. Defaults to an instance of 
-            CombinedRegistry.
+        registry (ClassVar[Type[Keystones]]: registry where Keystone subclasses 
+            are stored.
             
     """
-    registry: ClassVar[Keystones[str, object | Type[Any]]] = Keystones()
+    registry: ClassVar[Optional[Keystones]] = None
+
+    """ Initialization Methods """
+    
+    @classmethod
+    def __init_subclass__(cls, *args: Any, **kwargs: Any):
+        """Automatically registers subclass in Keystones."""
+        # Because Keystone will be used as a mixin, it is important to call 
+        # other base class '__init_subclass__' methods, if they exist.
+        with contextlib.suppress(AttributeError):
+            super().__init_subclass__(*args, **kwargs) 
+        # Initializes or validates 'registry' class attribute, if necessary.
+        cls._validate_registry()
+        # If 'cls' is a direct subclass of Keystone, it is added as a new type
+        # within 'registry'.
+        if Keystone in cls.__bases__:
+            cls.registry.add(item = cls)
+        # If 'cls' is not a direct subclass of Keystone (meaning that Keystone
+        # is not an immediate parent), then cls is registered in 'registry'.
+        else:
+            cls.registry.register(item = cls)
+            
+    """ Required Subclass Methods """
+    
+    @abc.abstractclassmethod
+    def create(
+        cls, 
+        name: Optional[str] = None,
+        **kwargs: Any) -> Keystone:
+        """Returns a subclass instance based on passed arguments.
+
+        The reason for requiring a 'create' classmethod is that it allows for
+        classes to gather objects needed for the instance, but not to 
+        necessarily maintain permanent links to other objects. This facilitates 
+        loose coupling and easier serialization without complex interdependence.
+        
+        Args:
+            name (Optional[str]): name or key to lookup a subclass.
+
+        Returns:
+            Keystone: subclass instance based on passed arguments.
+            
+        """
+        pass 
 
     """ Class Methods """
     
@@ -465,5 +507,25 @@ class Keystone(construction.CombinedFactory):
         else:
             raise TypeError(
                 'registry must be a subclass or subclass instance of Keystones')
+        return
+    
+    """ Private Methods """
+    
+    @classmethod
+    def _validate_registry(cls) -> None:
+        """Sets 'registry' to default or instances it, if necessary.
+
+        Raises:
+            TypeError: if 'registry' is not a subclass or subclass instance of 
+                Keystones.
+        
+        """
+        if cls.registry is None:
+            cls.set_registry(registry = Keystones)
+        elif issubclass(cls.registry, Keystones):
+            cls.registry = cls.registry()
+        elif not isinstance(cls.registry, Keystones):
+            raise TypeError(
+                'registry must be a subclass or subclass instance of Keystones')            
         return
     

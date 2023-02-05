@@ -17,12 +17,16 @@ License: Apache-2.0
     limitations under the License.
 
 Contents: 
-    Registry(base.AbstractRegistry, camina.Dictionary): registry that stores
-        subclass instances.
-    Registry(base.AbstractRegistry, camina.Dictionary): registry that stores
-        subclasses.
-    CombinedRegistry (base.AbstractRegistry, camina.ChainDictionary): a chained registry 
-        that stores both subclasses and subclass instances. 
+    Registry (base.AbstractRegistry, camina.Dictionary): registry that stores
+        classes or instances.
+    Anthology (base.AbstractRegistry, camina.ChainDictionary): registry that 
+        stores classes and instances.
+    Instancer (base.AbstractRegistrar): automatically registers instances in a 
+        Registry.
+    Subclasser (base.AbstractRegistrar): automatically registers subclasses in a
+        Registry.
+    Curator (base.AbstractRegistrar): automatically registers subclasses and 
+        instances in an Anthology.
            
 To Do:
     Add decorators for each registry type (using the commented out code as a 
@@ -30,120 +34,80 @@ To Do:
         
 """
 from __future__ import annotations
-from collections.abc import (
-    Callable, Hashable, Iterator, MutableMapping, MutableSequence)
+from collections.abc import Hashable, Iterator, MutableMapping, MutableSequence
 import contextlib
 import copy
 import dataclasses
-import functools
+# import functools
 import inspect
-from typing import Any, ClassVar, Optional, Type, Union
+from typing import Any, ClassVar, Optional, Type
 
 import camina
 
 from . import base
 from . import framework
 
+
+""" Registry Classes """
     
 @dataclasses.dataclass
 class Registry(base.AbstractRegistry, camina.Dictionary):
-    """Base class for the storage of registered instances or subclasses.
+    """Stores registered instances or classes.
     
     Args:
-        contents (MutableMapping[Hashable, object]): stored dictionary. Defaults 
+        contents (MutableMapping[Hashable, Any]): stored dictionary. Defaults 
             to an empty dict.
         default_factory (Optional[Any]): default value to return or default 
             callable to use to create the default value. Defaults to None.
                           
     """
-    contents: MutableMapping[Hashable, object] = dataclasses.field(
+    contents: MutableMapping[Hashable, Any] = dataclasses.field(
         default_factory = dict)
     default_factory: Optional[Any] = None
 
     """ Instance Methods """
     
-    def deposit(self, item: object, name: Optional[Hashable] = None) -> None:
+    def deposit(
+        self, 
+        item: object | Type[Any],
+        name: Optional[Hashable] = None) -> None:
         """Adds 'item' to 'contents'.
 
         Args:
-            item (object): instance to add to the registry.
+            item (object | Type[Any]): class or instance to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.namer'.
-                Defaults to None
+                passed, a key will be created using 'framework.NAMER'.
+                Defaults to None.
                 
         """
-        key = name or framework.namer(item)
-        self.add({key: item})
+        name = name or framework.NAMER(item)
+        self.contents[name] = item
         return
-
-    def withdraw(
-        self, 
-        item: Hashable,
-        parameters: Optional[MutableMapping[Hashable, Any]] = None) -> object:
-        """Creates an instance based on 'item' and 'parameters'.
+            
+    def withdraw(self, item: Hashable) -> object | Type[Any]:
+        """Returns an instance or class based on 'item'.
         
         Args:
             item (Hashable): key name corresponding to the stored item sought.
-            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
-                arguments to add to a created instance. If left as None, a copy
-                of a stored instance is returned. If passed, 'parameters' will
-                be injected as attributes on the copied instance. Defaults to 
-                None.
             
         Returns:
-            object: instance created from stored items.
+            object | Type[Any]: instance or class from stored items.
                 
         """
-        stored = copy.deepcopy(self[item])
-        return self._finalize_product(item = stored, parameters = parameters)
-
-    
-@dataclasses.dataclass
-class Instancer(base.AbstractRegistrar):
-    """Base class for subclass registration mixins.
-    
-    Attributes:
-        registry (ClassVar[Registry[str, object]]): stores subclass
-            instances. Defaults to an instance of Registry.
-            
-    """
-    registry: ClassVar[Registry[str, object]] = Registry()
-
-    """ Initialization Methods """
-    
-    def __post_init__(self) -> None:
-        """Automatically registers a subclass instance."""
-        # Because InstanceRegistrar is used as a mixin, it is important to
-        # call other base class '__post_init__' methods, if they exist.
-        with contextlib.suppress(AttributeError):
-            super().__post_init__() 
-        self.register(item = self)
-
-
-@dataclasses.dataclass
-class Subclasser(base.AbstractRegistrar):
-    """Base class for subclass registration mixins.
-    
-    Attributes:
-        registry (ClassVar[Registry[str, Type[Any]]]): stores 
-            subclasses. Defaults to an instance of Registry.
-            
-    """
-    registry: ClassVar[Registry[str, Type[Any]]] = Registry()
-
-    """ Initialization Methods """
-    
-    @classmethod
-    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
-        """Automatically registers subclass."""
-        # Because SubclassRegistrar will be used as a mixin, it is important to 
-        # call other base class '__init_subclass__' methods, if they exist.
-        with contextlib.suppress(AttributeError):
-            super().__init_subclass__(*args, **kwargs) 
-        # Automatically registers a new subclass
-        cls.registry.register(item = cls)
-
-        
+        try:
+            return self.contents.withdraw(item = item)
+        except AttributeError:
+            try:
+                return self.contents[item]
+            except (KeyError, TypeError):
+                if self.default_factory is None:
+                    raise KeyError(f'{item} is not in the registry')
+                try:
+                    return self.default_factory()
+                except TypeError:
+                    return self.default_factory
+   
+       
 @dataclasses.dataclass  
 class Anthology(base.AbstractRegistry, camina.ChainDictionary):
     """Stores classes instances and classes in a chained mapping.
@@ -166,12 +130,15 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         return_first (Optional[bool]): whether to only return the first match
             found (True) or to search all of the stored Registry instances
             (False). Defaults to True.
+        storage (Optional[Type[Registry]]): the class to use for each registry
+            stored in 'contents'.
                     
     """
-    contents: MutableSequence[Registry[Hashable, Any]] = dataclasses.field(
-        default_factory = list)
+    contents: MutableSequence[MutableMapping[Hashable, Any]] = (
+        dataclasses.field(default_factory = list))
     default_factory: Optional[Any] = None
-    return_first: Optional[bool] = True    
+    return_first: Optional[bool] = True
+    storage: Optional[Type[Registry]] = Registry  
                  
     """ Initialization Methods """
                 
@@ -180,11 +147,12 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         with contextlib.suppress(AttributeError):
             super().__post_init__() 
         if not self.contents:
-            self.contents.append(Registry())
-            self.contents.append(Registry())
+            self.contents.append(self.storage())
+            self.contents.append(self.storage())
     
     """ Properties """
-        
+     
+    @property    
     def instances(self) -> Registry:
         """Returns stored instances.
 
@@ -193,7 +161,8 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
             
         """
         return self.contents[0] 
-    
+     
+    @property     
     def subclasses(self) -> Registry:
         """Returns stored subclasses.
 
@@ -223,7 +192,7 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
             item (object | Type[Any]): subclass or instance to add to the 
                 registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.namer'.
+                passed, a key will be created using 'framework.NAMER'.
                 Defaults to None
                 
         """
@@ -243,11 +212,15 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         Args:
             item (object): instance to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.namer'.
+                passed, a key will be created using 'framework.NAMER'.
                 Defaults to None
                 
         """
-        self.instances.deposit(item = item, name = name)
+        try:
+            self.instances.deposit(item = item, name = name)
+        except AttributeError:
+            name = name or framework.NAMER(item)
+            self.instances[name] = item
         return
         
     def deposit_subclass(
@@ -259,11 +232,15 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         Args:
             item (Type[Any]): subclass to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.namer'.
+                passed, a key will be created using 'framework.NAMER'.
                 Defaults to None
                 
         """
-        self.subclasses.deposit(item = item, name = name)
+        try:
+            self.subclasses.deposit(item = item, name = name)
+        except AttributeError:
+            name = name or framework.NAMER(item)
+            self.subclasses[name] = item
         return
      
     def withdraw(self, item: Hashable) -> Type[Any]:
@@ -276,10 +253,23 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
             Type[Any]: subclass matching 'item'.
             
         """
-        return self[item]    
-    
+        matches = []
+        for dictionary in self.contents:
+            try:
+                matches.append(dictionary[item])
+                if self.return_first:
+                    return matches[0]
+            except KeyError:
+                pass
+        if len(matches) == 0:
+            raise KeyError(f'{item} is not found in the Anthology')
+        if len(matches) > 1:
+            return matches[0]
+        else:
+            return matches
+        
     """ Dunder Methods """
-    
+        
     def __iter__(self) -> Iterator[Any]:
         """Returns iterable of 'classes' and 'instances'.
 
@@ -300,8 +290,57 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         return len(self.instances) + len(self.classes)
 
 
+""" Registrar Classes """
+   
 @dataclasses.dataclass
-class Librarian(Instancer, Subclasser):
+class Instancer(base.AbstractRegistrar):
+    """Base class for subclass registration mixins.
+    
+    Attributes:
+        registry (ClassVar[Registry[str, object]]): stores subclass instances. 
+            Defaults to an instance of Registry.
+            
+    """
+    registry: ClassVar[Registry[str, object]] = Registry()
+
+    """ Initialization Methods """
+    
+    def __post_init__(self) -> None:
+        """Automatically registers a subclass instance."""
+        # Because Instancer is used as a mixin, it is important to call other 
+        # base class '__post_init__' methods, if they exist.
+        with contextlib.suppress(AttributeError):
+            super().__post_init__()
+        # Automatically registers a new instance.
+        self.registry.deposit(item = self)
+
+
+@dataclasses.dataclass
+class Subclasser(base.AbstractRegistrar):
+    """Base class for subclass registration mixins.
+    
+    Attributes:
+        registry (ClassVar[Registry[str, Type[Any]]]): stores subclasses. 
+            Defaults to an instance of Registry.
+            
+    """
+    registry: ClassVar[Registry[str, Type[Any]]] = Registry()
+
+    """ Initialization Methods """
+    
+    @classmethod
+    def __init_subclass__(cls, *args: Any, **kwargs: Any) -> None:
+        """Automatically registers subclass."""
+        # Because Subclasser will be used as a mixin, it is important to call 
+        # other base class '__init_subclass__' methods, if they exist.
+        with contextlib.suppress(AttributeError):
+            super().__init_subclass__(*args, **kwargs) 
+        # Automatically registers a new subclass.
+        cls.registry.deposit(item = cls)
+
+ 
+@dataclasses.dataclass
+class Curator(Instancer, Subclasser):
     """Base class for combined registration mixins.
     
     Attributes:

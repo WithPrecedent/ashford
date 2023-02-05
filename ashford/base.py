@@ -20,8 +20,8 @@ Contents:
     AbstractFactory (abc.ABC): base class for all factories. A 'create' class 
         method is required for subclasses.
     AbstractRegistrar (abc.ABC): base class for all classes that automatically 
-        register subclasses and/or instances. A 'register' class method provided 
-        which relies on the 'deposit' method of the associated Registry.
+        register subclasses and/or instances. A 'register' class method is 
+        provided for the default registration method.
     AbstractRegistry (abc.ABC): base class for storing registered subclasses 
         and/or instances. 'deposit' and 'withdraw' methods are required for 
         subclasses. 
@@ -34,8 +34,9 @@ from __future__ import annotations
 import abc
 from collections.abc import Hashable, MutableMapping
 import dataclasses
-import inspect
 from typing import Any, ClassVar, Optional, Type, Union
+
+from . import framework
 
 
 @dataclasses.dataclass
@@ -49,11 +50,11 @@ class AbstractFactory(abc.ABC):
         cls, 
         source: str, 
         parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
-            Type[AbstractFactory] | AbstractFactory):
+            AbstractFactory | Type[AbstractFactory]):
         """Creates a subclass or instance based on 'source' and 'parameters'.
         
         Args:
-            source (str): key for item stored in 'registry'.
+            source (str): key or data for item stored in 'registry'.
             parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
                 arguments for a created instance. If 'parameters' are passed,
                 an instance is always returned. If left as None, whether an 
@@ -61,7 +62,7 @@ class AbstractFactory(abc.ABC):
                 method dictates. Defaults to None.
                 
         Returns:
-            Type[AbstractFactory] | AbstractFactory: a subclass or subclass 
+            AbstractFactory | Type[AbstractFactory]: a subclass or subclass 
                 instance.
                 
         """
@@ -93,14 +94,18 @@ class AbstractRegistrar(abc.ABC):
         """Adds 'item' to a registry.
         
         Args:
-            item (object | Type[Any]): an instance to add to the registry.
+            item (object | Type[Any]): an instance or class to add to the 
+                registry.
             name (Optional[str]): name to use as the key when 'item' is stored
                 in the registry. Defaults to None. If not passed, the function
-                in 'framework.namer' may be used (depending on the subclass
-                'register' method).
+                in 'framework.NAMER' may be used.
         
         """
-        cls.registry.deposit(item = item, name = name)
+        try:
+            cls.registry.deposit(item = item, name = name)
+        except AttributeError:
+            name = name or framework.NAMER(item)
+            cls.registry[name] = item
         return
 
 
@@ -130,61 +135,47 @@ class AbstractRegistry(abc.ABC):
 
         Args:
             item (object | Type[Any]): class or instance to add to the registry.
-            name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.namer'.
-                Defaults to None
+            name (Optional[Hashable]): key to use to store 'item'. Defaults to
+                None.
+                
+        """
+        pass
+    
+    @abc.abstractmethod            
+    def withdraw(self, item: Hashable) -> object | Type[Any]:
+        """Returns an instance or class based on 'item'.
+        
+        Args:
+            item (Hashable): key name corresponding to the stored item sought.
+            
+        Returns:
+            object | Type[Any]: instance or class from stored items.
                 
         """
         pass
 
-    @abc.abstractmethod
-    def withdraw(
-        self, 
-        item: Hashable,
-        parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
-            object | Type[Any]):
-        """Creates an instance or class based on 'item' and 'parameters'.
+    """ Dunder Methods """
+    
+    def __getitem__(self, key: Hashable) -> object | Type[Any]:
+        """Returns a stored item.
         
         Args:
-            item (Hashable): key name corresponding to the stored item sought.
-            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
-                arguments to add to a created instance. If passed, an instance
-                will always be returned. If None, a class or instance may be
-                returned, depending on the Registry subclass method. Defaults to
-                None.
+            key (Hashable): key name corresponding to the stored item sought.
             
         Returns:
             object | Type[Any]: instance or class created from stored items.
                 
         """
-        pass
-
-    """ Private Methods """
+        return self.withdraw(item = key)
     
-    def _finalize_product(
-        self, 
-        item: object | Type[Any], 
-        parameters: Optional[MutableMapping[Hashable, Any]]) -> (
-            object | Type[Any]):
-        """Creates a class or instance based on passed arguments.
+    def __setitem__(self, key: Hashable, value: object | Type[Any]) -> None:
+        """Stores 'value' with 'key'.
         
         Args:
-            item (object | Type[Any]): subclass or subclass instance.
-            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
-                arguments for a created instance. If 'parameters' are passed,
-                an instance is always returned. If left as None, 'item' will
-                be returned as is.
+            key(Hashable): key name for storing 'value'.
+            value (object | Type[Any]): instance or class to store.
                 
-        Returns:
-            object | Type[Any]: a subclass or subclass instance.
-                
-        """ 
-        if parameters is None:
-            return item  
-        elif inspect.isclass(item):
-            return item(**parameters)
-        else:
-            for key, value in parameters.items():
-                setattr(item, key, value)
-            return item
-            
+        """
+        self.deposit(item = value, name = key)
+        return
+    

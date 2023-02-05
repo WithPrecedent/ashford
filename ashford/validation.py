@@ -25,6 +25,7 @@ ToDo:
     
 """
 from __future__ import annotations
+import abc
 import functools
 from typing import Any, Callable, Optional, Type, Union
 
@@ -65,5 +66,25 @@ import camina
 #         return validator
 #     else:
 #         return validator(wrapped = _wrapped)
+
+# class Validator(abc.ABC):
+#     """ Type validation descriptor.
     
-   
+#     This code is adapted from the offical Python HOWTOs:
+#     https://docs.python.org/3/howto/descriptor.html
+    
+    
+#     """
+#     def __set_name__(self, owner, name):
+#         self.private_name = '_' + name
+
+#     def __get__(self, obj, objtype = None):
+#         return getattr(obj, self.private_name)
+
+#     def __set__(self, obj, value):
+#         self.validate(value)
+#         setattr(obj, self.private_name, value)
+
+#     @abc.abstractmethod
+#     def validate(self, value):
+#         pass  

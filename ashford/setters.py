@@ -41,57 +41,6 @@ from . import configuration
 """ Base Validators """
 
 @dataclasses.dataclass
-class DefaultValidator(base.Validator, abc.ABC):
-    """Base class for a validator descriptor that supports a default value.
-    
-    Unlike the class in the Python docs, this one stores additional attributes
-    for use by subclasses that do more than very basic type validation. It 
-    also can store a default value or default callable if there is no stored
-    value.
-
-    Args:
-        default_factory (Optional[Any]): default value to return or default 
-            callable to use to create the default value. Defaults to None.    
-        
-    Attributes:
-        attribute_name (str): name of the validator attribute in 'owner'. 
-        private_name (str): 'attribute_name' with a leading underscore added.
-        owner (object): object of which this validator is an attribute.
-            
-    """
-    default_factory: Optional[Any] = None 
-        
-    """ Dunder Methods """
-
-    def __get__(
-        self, 
-        owner: object, 
-        objtype: Optional[Type[Any]] = None) -> Any:
-        """Returns item stored in 'private_name' of 'owner' or a default value.
-
-        If there is no value stored in the private attribute, the descriptor 
-        tries to return a default value. It first attempts to call 
-        'default_factory' as a callable. But, if that creates a TypeError, the 
-        method returns whatever value is stored in 'default_factory'.
-        
-        Args:
-            owner (object): object of which this validator is an attribute.
-            objtype (Optional[Type[Any]]): class of 'owner'. Defaults to None.
-
-        Returns:
-            Any: stored item or a default value.
-            
-        """
-        try:
-            return getattr(owner, self.private_name)  
-        except AttributeError:
-            try:
-                return self.default_factory()
-            except TypeError:
-                return self.default_factory
-
-
-@dataclasses.dataclass
 class TypeValidator(base.Validator):
     """Base class for a type validator descriptor.
     
@@ -101,7 +50,47 @@ class TypeValidator(base.Validator):
         owner (object): object of which this validator is an attribute.
             
     """
-    pass    
+    """ Dunder Methods """
+
+    def __get__(
+        self, 
+        owner: object, 
+        objtype: Optional[Type[Any]] = None) -> Any:
+        """Returns item stored in 'private_name'.
+        Args:
+            owner (object): object of which this validator is an attribute.
+            objtype (Optional[Type[Any]]): class of 'owner'. Defaults to None.
+
+        Returns:
+            Any: stored item.
+            
+        """
+        return getattr(owner, self.private_name)  
+
+    def __set__(self, owner: object, value: Any) -> None:
+        """Stores 'value' in 'private_name' of 'owner'.
+
+        Args:
+            owner (object): object of which this validator is an attribute.
+            value (Any): item to store, after being validated.
+            
+        """
+        validated = self.validate(item = value, parent = owner)
+        setattr(owner, self.private_name, validated)
+        return    
+    
+    def __set_name__(self, owner: object, name: str) -> None:
+        """Stores 'owner' object as 'owner' attribute.
+
+        Args:
+            owner (object): object of which this validator is an attribute.
+            name (str): name of this attribute in 'owner'. 
+            
+        """
+        self.attribute_name = name
+        self.private_name = f'_{name}'
+        self.owner = owner
+        return   
     
 
 @dataclasses.dataclass
@@ -115,28 +104,6 @@ class ValueValidator(base.Validator):
             
     """
     pass    
-
-  
-""" Default Validators """
-
-@dataclasses.dataclass
-class BonafideName(DefaultValidator):
-    """Validation descriptor for a name attribute.
-    
-    This class automatically provides a name attribute to an object using the
-    'default_factory' function. 
-
-    Args:
-        default_factory (Optional[Any]): function that creates a name if one has 
-            not been stored. Defaults to 'configuration.KEYER'.
-            
-    Attributes:
-        attribute_name (str): name of the validator attribute in 'owner'. 
-        private_name (str): 'attribute_name' with a leading underscore added.
-        owner (object): object of which this validator is an attribute.
-            
-    """
-    default_factory: Optional[Any] = configuration.KEYER        
 
       
 """ Type Validators """
@@ -544,67 +511,3 @@ class BonafideRange(ValueValidator):
                     f'item must be greater than {self.minimum} '
                     f'and less than {self.maximum}')
 
-   
-""" Factory and Anthology Validators """
-
-@dataclasses.dataclass
-class FactoryValidator(base.Validator):
-    """Validates or converts stored data from a registry.
-    
-    Attributes:
-        attribute_name (str): name of the validator attribute in 'owner'. 
-        private_name (str): 'attribute_name' with a leading underscore added.
-        owner (object): object of which this validator is an attribute.
-            
-    """
-
-    """ Instance Methods """
-
-    def validate(self, item: Any) -> Any:
-        """Validates 'item' or creates a new instance.
-
-        Args:
-            item (Any): object to validate.
-
-        Returns:
-            Any: validated object.
-            
-        """   
-        return self.owner.registry.get(item) if isinstance(item, str) else item 
-
-
-# def bondafide(
-#     _wrapped: Optional[Type[Any]] = None, 
-#     *,
-#     include: Optional[list[str]] = None, 
-#     exclude: Optional[list[str]] = None) -> Any:
-#     """Wraps a python dataclass and validates/converts attributes.
-    
-#     """
-#     include = include or []
-#     exclude = exclude or []
-#     def validator(wrapped: Type[Any]) -> Any:
-#         @functools.wraps(wrapped)
-#         def wrapper(*args: Any, **kwargs: Any) -> object:
-#             kwargs.update(camina.kwargify(args = args, item = wrapped))
-#             instance = wrapped(**kwargs)
-#             attributes = include or wrapped.__annotations__.keys()
-#             attributes = [a for a in attributes if a not in exclude] 
-#             for attribute in attributes:
-#                 try:
-#                     kind = wrapped.__annotations__[attribute]
-#                     key = kind.__name__
-#                     value = getattr(instance, attribute)
-#                     if not isinstance(value, kind):
-#                         converter = camina.catalog[key]
-#                         new_value = converter(item = value)
-#                         setattr(instance, attribute, new_value)
-#                 except KeyError:
-#                     pass
-#             return instance
-#         return wrapper
-#     if _wrapped is None:
-#         return validator
-#     else:
-#         return validator(wrapped = _wrapped)
- 

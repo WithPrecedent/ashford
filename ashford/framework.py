@@ -1,5 +1,5 @@
 """
-framework: settings for ashford
+framework: functions for changing ashford settings
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2023, Corey Rayburn Yung
 License: Apache-2.0
@@ -25,56 +25,40 @@ ToDo:
 """
 from __future__ import annotations
 from collections.abc import Callable
-from typing import Any, Optional, Type
+from typing import Any, Type
 
-import camina
+from . import configuration
     
 
-NAMER: Callable[[object | Type[Any]], str] = camina.namify
-REMOVABLE_PREFIXES: list = ['project_']
-
-
-def set_namer(namer: Callable[[object | Type[Any]], str]) -> None:
+def set_keyer(keyer: Callable[[object | Type[Any]], str]) -> None:
     """Sets the global default function used to name items.
 
     Args:
-        namer (Callable[[object | Type[Any]], str]): function that returns a 
+        keyer (Callable[[object | Type[Any]], str]): function that returns a 
             str name of any item passed.
 
     Raises:
-        TypeError: if 'namer' is not callable.
+        TypeError: if 'keyer' is not callable.
         
     """
-    if isinstance(namer, Callable):
-        globals()['NAMER'] = namer
+    if isinstance(keyer, Callable):
+        configuration.KEYER = keyer
     else:
-        raise TypeError('namer argument must be a callable')
+        raise TypeError('keyer argument must be a callable')
 
-def method_namer(item: str) -> str:
-    """Returns a factory method name for creating an instance.
-    
-    Args:
-        item (str): name corresponding to part of the str of the factory method
-            name used for creating instances.
-            
-    """
-    return f'from_{item}' 
-
-METHOD_NAMER: Callable[[object | Type[Any]], str] = method_namer
-
-def set_method_namer(namer: Callable[[object | Type[Any]], str]) -> None:
+def set_method_keyer(keyer: Callable[[object | Type[Any]], str]) -> None:
     """Sets the global default function used to name factory methods.
 
     Args:
-        namer (Callable[[object | Type[Any]], str]): function that returns a 
+        keyer (Callable[[object | Type[Any]], str]): function that returns a 
             str name of any item passed.
 
     Raises:
-        TypeError: if 'namer' is not callable.
+        TypeError: if 'keyer' is not callable.
         
     """
-    if isinstance(namer, Callable):
-        globals()['METHOD_NAMER'] = namer
+    if isinstance(keyer, Callable):
+        configuration.METHOD_NAMER = keyer
     else:
-        raise TypeError('namer argument must be a callable')
+        raise TypeError('keyer argument must be a callable')
     

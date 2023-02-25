@@ -17,7 +17,7 @@ License: Apache-2.0
     limitations under the License.
 
 Contents:
-    Library (storage.Registry): base class for storing Keystone 
+    Library (storage.Anthology): base class for storing Keystone 
         subclasses and/or subclass instances.
     Librarian (object): stores base classes, defaults, and subclasses for
         Keystone.
@@ -38,28 +38,32 @@ from typing import Any, ClassVar, Optional, Type
 
 import camina
 
-from . import base
+from . import configuration
 from . import construction
-from . import framework
 from . import registration
+from . import validation
 
 
 @dataclasses.dataclass
-class Library(base.AbstractRegistry):
+class Library(registration.Anthology):
     """Mixin for Keystone registries.
     
-    This should be added as a mixin to a Registry class, depending upon what is
+    This should be added as a mixin to a Anthology class, depending upon what is
     to be stored.
     
     Args:
+        contents (MutableMapping[Hashable, Any]): stored dictionary. Defaults 
+            to an empty Anthology instance.
+        default_factory (Optional[Any]): default value to return or default 
+            callable to use to create the default value. Defaults to None.
         name (Optional[Hashable]): name of Library, which is used by Librarian
             to access the Library instance. Defaults to None.
-        default_factory (Optional[Any]): default item to return. Defaults to 
-            None.
-                          
+                                     
     """
-    name: Optional[Hashable] = None
+    contents: MutableMapping[Hashable, Any] = dataclasses.field(
+        default_factory = registration.Anthology)
     default_factory: Optional[Any] = None
+    name: Optional[Hashable] = dataclasses.field(default = camina.Name())
 
     """ Initialization Methods """
             
@@ -80,17 +84,13 @@ class Library(base.AbstractRegistry):
         Args:
             item (object | Type[Any]): class or instance to add to 'contents'.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.NAMER'.
+                passed, a key will be created using 'configuration.KEYER'.
                 Defaults to None.
                 
         """
-        if (abc.ABC not in item.__bases__ 
-                and self.__class__.default_factory is None):
-            self.default_factory = item
-        try:
-            super().deposit(item = item, name = name)
-        except AttributeError:
-            super().__setitem__(name, item)
+        self.contents[name] = item
+        if not inspect.isabstract(item) and self.default_factory is None:
+            self.default_factory = self.contents[name]
         self._validate_name()
         return
 
@@ -101,66 +101,14 @@ class Library(base.AbstractRegistry):
         if self.name is None:
             if self.contents:
                 first_item = self.contents[list(self.contents.keys())[0]]
-                self.name = framework.NAMER(first_item)
+                self.name = configuration.KEYER(first_item)
             elif self.default_factory:
-                self.name = framework.NAMER(self.default)
+                self.name = configuration.KEYER(self.default)
         return
 
-
+  
 @dataclasses.dataclass
-class RegistryLibrary(Library, registration.Registry):
-    """Mixin for Keystone registries.
-    
-    This should be added as a mixin to a Registry class, depending upon what is
-    to be stored.
-    
-    Args:
-        contents (MutableMapping[Hashable, object | Type[Any]]): stored 
-            dictionary. Defaults to an empty dict.
-        default_factory (Optional[Any]): default value to return or default 
-            callable to use to create the default value. Defaults to None.
-        name (Optional[Hashable]): name of Library, which is used by Librarian
-            to access the Library instance. Defaults to None.
-                          
-    """
-    contents: MutableMapping[Hashable, object | Type[Any]] = dataclasses.field(
-        default_factory = dict)
-    default_factory: Optional[Any] = None
-    name: Optional[Hashable] = None
-
-
-@dataclasses.dataclass
-class AnthologyLibrary(Library, registration.Anthology):
-    """Mixin for Keystone registries.
-    
-    This should be added as a mixin to a Registry class, depending upon what is
-    to be stored.
-    
-    Args:
-        contents (MutableSequence[Registry[Hashable, Any]]): list of stored 
-            Registry instances. This is equivalent to the 'maps' attribute 
-            of a collections.ChainMap instance but uses a different name for 
-            compatibility with other mappings in Ashford. A separate 'maps' 
-            property is included which points to 'contents' to ensure 
-            compatibility in the opposite direction.
-        default_factory (Optional[Any]): default value to return or default 
-            callable to use to create the default value.
-        return_first (Optional[bool]): whether to only return the first match
-            found (True) or to search all of the stored Registry instances
-            (False). Defaults to True.
-        name (Optional[Hashable]): name of Library, which is used by Librarian
-            to access the Library instance. Defaults to None.
-                          
-    """
-    contents: MutableSequence[MutableMapping[Hashable, Any]] = (
-        dataclasses.field(default_factory = list))
-    default_factory: Optional[Any] = None
-    return_first: Optional[bool] = True   
-    name: Optional[Hashable] = None
-
-     
-@dataclasses.dataclass
-class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
+class Librarian(registration.Anthology, camina.ChainDictionary, abc.ABC):
     """Stores Keystone subclasses and/or instances.
     
     For each Keystone, an attribute is added with the snakecase name of that 
@@ -172,7 +120,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
     either:
         1) subclass and override the '_get_name' method to only change the
             naming convention for Librarian; or 
-        2) or call 'ashford.set_namer' to set the naming function used 
+        2) or call 'ashford.set_keyer' to set the naming function used 
             throughout ashford.
     
     Args:
@@ -193,7 +141,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
         dataclasses.field(default_factory = list))
     default_factory: Type[Any] = None
     return_first: Optional[bool] = False
-    storage: ClassVar[Type[Library]] = RegistryLibrary
+    storage: ClassVar[Type[Library]] = Library
                      
     """ Properties """
     
@@ -313,7 +261,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
     #     self,
     #     item: object,
     #     attribute: str,
-    #     parameters: Optional[MutableMapping[str, Any]] = None) -> object:
+    #     parameters: Optional[MutableMapping[Hashable, Any]] = None) -> object:
     #     """Creates or validates 'attribute' in 'item'.
 
     #     Args:
@@ -323,7 +271,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
     #         attribute (str): name of the attribute' in item containing a value
     #             to be validated or which provides information to create an
     #             appropriate instance.
-    #         parameters (Optional[MutableMapping[str, Any]]): parameters to pass
+    #         parameters (Optional[MutableMapping[Hashable, Any]]): parameters to pass
     #             to or inject in the Keystone subclass instance.
 
     #     Raises:
@@ -364,7 +312,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
     #         value = registry[name]
     #     # Gets name of class if it is already an appropriate subclass.
     #     elif inspect.issubclass(value, base):
-    #         name = framework.NAMER(value)
+    #         name = configuration.KEYER(value)
     #     else:
     #         raise ValueError(f'{value} is not a recognized keystone')
     #     # Creates a subclass instance.
@@ -408,7 +356,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
         """        
         name = self._get_name(item = item, name = name)
         self.add_library(name = name)
-        self.libraries[name].deposit(item = item, name = name)
+        self.libraries[name][name] = item
         return 
     
     def _get_name(
@@ -417,7 +365,7 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
         name: Optional[str] = None) -> None:
         """Returns 'name' or str name of item.
         
-        By default, the method uses framework.NAMER to create a snakecase name. 
+        By default, the method uses configuration.KEYER to create a snakecase name. 
         If the resultant name begins with any prefix listed in 
         defaults.REMOVABLE_PREFIXES, that substring is removed. 
 
@@ -433,9 +381,9 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
             str: name of 'item' or 'name' (with the 'project' prefix removed).
             
         """
-        name = name or framework.NAMER(item)
-        if name.startswith(tuple(framework.REMOVABLE_PREFIXES)):
-            for prefix in framework.REMOVABLE_PREFIXES:
+        name = name or configuration.KEYER(item)
+        if name.startswith(tuple(configuration.REMOVABLE_PREFIXES)):
+            for prefix in configuration.REMOVABLE_PREFIXES:
                 name.dropprefix(prefix)
         return name   
      
@@ -454,80 +402,6 @@ class Librarian(registration.Registry, camina.ChainDictionary, abc.ABC):
     #     return self.libraries[attribute]            
 
      
-@dataclasses.dataclass
-class AnthologyLibrarian(Librarian):
-    """Stores Keystone subclasses.
-    
-    For each Keystone, an attribute is added with the snakecase name of that 
-    Keystone. In that attribute, a dict-like object (determined by
-    'default_factory') is the value and it stores all Keystone subclasses of 
-    that type (again using snakecase names as keys).
-    
-    If you want to use a different naming convention besides snakecase, you can 
-    either:
-        1) subclass and override the '_get_name' method to only change the
-            naming convention for Librarian; or 
-        2) or call 'ashford.set_namer' to set the naming function used 
-            throughout ashford.
-    
-    Args:
-        contents (MutableSequence[Library[Hashable, Any]]): list of 
-            stored Library instances.
-        default_factory (Optional[Any]): default value to return or default 
-            callable to use to create the default value.
-        return_first (Optional[bool]): whether to only return the first match
-            found (True) or to search all of the stored Dictionary instances
-            (False). Defaults to False.
-                        
-    Attributes:
-        All direct Keystone subclasses will have an attribute name added
-        dynamically.
-        
-    """
-    contents: MutableSequence[AnthologyLibrary] = (
-        dataclasses.field(default_factory = list))
-    default_factory: Type[Any] = None
-    return_first: Optional[bool] = False
-    storage: ClassVar[Type[Library]] = AnthologyLibrary    
-    
-    
-@dataclasses.dataclass
-class RegistryLibrarian(Librarian):
-    """Stores Keystone subclasses.
-    
-    For each Keystone, an attribute is added with the snakecase name of that 
-    Keystone. In that attribute, a dict-like object (determined by
-    'default_factory') is the value and it stores all Keystone subclasses of 
-    that type (again using snakecase names as keys).
-    
-    If you want to use a different naming convention besides snakecase, you can 
-    either:
-        1) subclass and override the '_get_name' method to only change the
-            naming convention for Librarian; or 
-        2) or call 'ashford.set_namer' to set the naming function used 
-            throughout ashford.
-    
-    Args:
-        contents (MutableSequence[Library[Hashable, Any]]): list of 
-            stored Library instances.
-        default_factory (Optional[Any]): default value to return or default 
-            callable to use to create the default value.
-        return_first (Optional[bool]): whether to only return the first match
-            found (True) or to search all of the stored Dictionary instances
-            (False). Defaults to False.
-                        
-    Attributes:
-        All direct Keystone subclasses will have an attribute name added
-        dynamically.
-        
-    """
-    contents: MutableSequence[RegistryLibrary] = (
-        dataclasses.field(default_factory = list))
-    default_factory: Type[Any] = None
-    return_first: Optional[bool] = False    
-    storage: ClassVar[Type[Library]] = RegistryLibrary
-  
-         
 @dataclasses.dataclass
 class Keystone(abc.ABC):
     """Mixin for core package base classes.
@@ -570,34 +444,34 @@ class CuratorKeystone(
     
     Attributes:
         registry (ClassVar[Librarian]): stores subclasses and instances. 
-            Defaults to an empty AnthologyLibrarian.
+            Defaults to an empty CorpusLibrarian.
             
     """
-    registry: ClassVar[Librarian] = AnthologyLibrarian()
+    registry: ClassVar[Librarian] = Librarian()
   
          
 @dataclasses.dataclass
 class InstancerKeystone(
-    Keystone, registration.Instancer, construction.RegistryFactory, abc.ABC):
+    Keystone, registration.Instancer, construction.AnthologyFactory, abc.ABC):
     """Mixin for core package base classes.
     
     Attributes:
         registry (ClassVar[Librarian]): stores subclass instances. Defaults to 
-            an empty RegistryLibrarian.
+            an empty AnthologyLibrarian.
             
     """
-    registry: ClassVar[Librarian] = RegistryLibrarian()
+    registry: ClassVar[Librarian] = Librarian()
      
   
 @dataclasses.dataclass
 class SubclasserKeystone(
-    Keystone, registration.Subclasser, construction.RegistryFactory, abc.ABC):
+    Keystone, registration.Subclasser, construction.AnthologyFactory, abc.ABC):
     """Mixin for core package base classes.
     
     Attributes:
         registry (ClassVar[Librarian]): stores subclasses. Defaults to 
-            an empty RegistryLibrarian.
+            an empty AnthologyLibrarian.
             
     """
-    registry: ClassVar[Librarian] = RegistryLibrarian()
+    registry: ClassVar[Librarian] = Librarian()
      

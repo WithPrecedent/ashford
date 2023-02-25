@@ -10,7 +10,7 @@ repository = "https://github.com/WithPrecedent/ashford"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-camina = ["^0.1.15"]
+camina = ["^0.1.16"]
 miller = ["^0.1.8"]
 
 [tool.poetry.dev-dependencies]

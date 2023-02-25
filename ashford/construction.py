@@ -1,5 +1,5 @@
 """
-construction: easy-to-use factory mixins
+construction: factory mixins and decorators
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2023, Corey Rayburn Yung
 License: Apache-2.0
@@ -17,22 +17,17 @@ License: Apache-2.0
     limitations under the License.
 
 Contents:   
-    AnthologyFactory (abc.ABC): base class for ashford factory mixins. It 
-        requires subclasses have a 'create' classmethod.
-    RegistryFactory (base.AbstractFactory): mixin that stores all subclass 
+    AnthologyFactory (base.Factory): mixin that stores all subclass 
         instances in the 'instances' class attribute and returns stored 
         instances when the 'create' classmethod is called.
-    LibraryFactory (base.AbstractFactory): mixin that stores all subclasses and 
-        subclass instances in the 'library' class attribute and returns stored 
-        subclasses and/or instances when the 'create' classmethod is called.
-    SourceFactory (base.AbstractFactory, abc.ABC): mixin that calls the 
+    SourceFactory (base.Factory, abc.ABC): mixin that calls the 
         appropriate creation method based on the type of passed first argument 
         to 'create' and the types stored in the keys of the 'sources' class 
         attribute.
-    StealthFactory (base.AbstractFactory, abc.ABC): mixin that returns stored 
+    StealthFactory (base.Factory, abc.ABC): mixin that returns stored 
         subclasses when the 'create' classmethod is called without having a 
         'registry' class attribute like SubclassFactory.
-    TypeFactory (base.AbstractFactory, abc.ABC): mixin that calls the 
+    TypeFactory (base.Factory, abc.ABC): mixin that calls the 
         appropriate creation method based on the type of passed first argument 
         to 'create' and the snakecase name of the type. This factory is prone to 
         significant key errors unless you are sure of the snakecase names of all 
@@ -49,54 +44,12 @@ import abc
 from collections.abc import Hashable, Mapping, MutableMapping, MutableSequence
 import copy
 import dataclasses
-import inspect
 from typing import Any, ClassVar, Optional, Type
 
 from . import base
-from . import framework
+from . import configuration
 from . import registration
 
-
-""" Factories with Registries """    
- 
-@dataclasses.dataclass
-class RegistryFactory(base.AbstractFactory, abc.ABC):
-    """Mixin supporting creation of subclasses or instances.
-    
-    Attributes:
-        registry (ClassVar[MutableMapping[Hashable, Any]]): stores subclasses or 
-            instances (but not both). Defaults to an instance of Registry.
-            
-    """
-    registry: ClassVar[MutableMapping[Hashable, Any]] = registration.Registry()
-        
-    """ Class Methods """
-
-    @classmethod
-    def create(
-        cls, 
-        source: str, 
-        parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
-            RegistryFactory):
-        """Creates a subclass or instance based on 'source' and 'parameters'.
-        
-        Args:
-            source (str): key for item stored in 'registry'.
-            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
-                arguments to add to a created instance. If left as None, a copy
-                of a stored instance is returned. If passed, 'parameters' will
-                be injected as attributes on the copied instance. Defaults to 
-                None.
-            
-        Returns:
-            RegistryFactory: a RegistryFactory subclass instance created based 
-                on 'source' and any passed arguments.
-                
-        """
-        stored = copy.deepcopy(cls.registry[source])
-        return cls._finalize_factory_product(
-            item = stored, 
-            parameters = parameters)
 
     """ Private Methods """
     
@@ -127,54 +80,49 @@ class RegistryFactory(base.AbstractFactory, abc.ABC):
             for key, value in parameters.items():
                 setattr(item, key, value)
             return item
-          
 
 @dataclasses.dataclass
-class AnthologyFactory(RegistryFactory, abc.ABC):
-    """Mixin supporting creation of instances from an Anthology.
+class AnthologyFactory(base.Factory, abc.ABC):
+    """Allows creation of subclasses or instances from a registry.
     
     Attributes:
-        registry (ClassVar[registration.Anthology]): stores subclasses and 
-            instances. Defaults to an instance of Anthology.
+        registry (ClassVar[MutableMapping[Hashable, Any]]): stores subclasses or 
+            instances (but not both). Defaults to an instance of Anthology.
             
     """
-    registry: ClassVar[registration.Anthology] = registration.Anthology()
-    
+    registry: ClassVar[MutableMapping[Hashable, Any]] = registration.Anthology()
+        
     """ Class Methods """
 
     @classmethod
     def create(
         cls, 
-        source: str, 
+        source: Hashable, 
         parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
             AnthologyFactory):
-        """Creates an instance based on 'source' and 'parameters'.
+        """Creates a subclass or instance based on 'source' and 'parameters'.
         
         Args:
-            source (str): key for item stored in 'registry'.
+            source (Hashable): key for item stored in 'registry'.
             parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
-                arguments to pass to a newly created instance. If passed, they 
-                will either be passed as arguments, or, if the stored item is
-                already an instance, added as attributes. Defaults to None.
-                
+                arguments to add to a created instance. If left as None, a copy
+                of a stored instance is returned. If passed, 'parameters' will
+                be injected as attributes on the copied instance. Defaults to 
+                None.
+            
         Returns:
-            AnthologyFactory: a subclass instance.
+            AnthologyFactory: a AnthologyFactory subclass instance created based 
+                on 'source' and any passed arguments.
                 
         """
         stored = copy.deepcopy(cls.registry[source])
-        product = cls._finalize_factory_product(
+        return cls._finalize_factory_product(
             item = stored, 
             parameters = parameters)
-        if inspect.isclass(product):
-            return product()
-        else:
-            return product
-          
-
-""" Factories without Registries """
-               
+        
+             
 @dataclasses.dataclass
-class SourceFactory(base.AbstractFactory, abc.ABC):
+class SourceFactory(base.Factory, abc.ABC):
     """Mixin that returns subclasses using 'sources' class attribute.
 
     Unlike the above factories, this one does not require an additional class 
@@ -191,7 +139,7 @@ class SourceFactory(base.AbstractFactory, abc.ABC):
             sources for object creation. Values are the corresponding str name 
             of the type which should have a class method called 
             'from_{str name of type}' (or a different naming convention if 
-            'framework.METHOD_NAMER' is changed). Because the 'create' method 
+            'configuration.METHOD_NAMER' is changed). Because the 'create' method 
             will call the first method for which 'source' matches a key, you 
             should put specific types before general types in 'sources'.
     
@@ -223,7 +171,7 @@ class SourceFactory(base.AbstractFactory, abc.ABC):
         parameters = parameters or {}
         for kind, suffix in cls.sources.items():
             if isinstance(source, kind):
-                method_name = framework.METHOD_NAMER(item = suffix)
+                method_name = configuration.METHOD_NAMER(item = suffix)
                 try:
                     method = getattr(cls, method_name)
                 except AttributeError:
@@ -233,7 +181,7 @@ class SourceFactory(base.AbstractFactory, abc.ABC):
       
 
 @dataclasses.dataclass
-class StealthFactory(base.AbstractFactory, abc.ABC):
+class StealthFactory(base.Factory, abc.ABC):
     """Mixin that returns a subclass without requiring a storage attribute.
     
     Unlike the other factories, this one does not require any attributes. 
@@ -252,16 +200,16 @@ class StealthFactory(base.AbstractFactory, abc.ABC):
     @classmethod
     def create(
         cls, 
-        source: str, 
+        source: Hashable, 
         parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
             StealthFactory | Type[StealthFactory]):
         """Returns a subclass or instance based on 'source' and 'parameters.
         
         A subclass in the '__subclasses__' attribute is selected based on the
-        naming convention in 'ashford.NAMER'.
+        naming convention in 'ashford.KEYER'.
         
         Args:
-            source (str): name corresponding to a subclass stored in the
+            source (Hashable): key corresponding to a subclass stored in the
                 '__subclasses__' attribute.
             parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
                 arguments to pass to a newly created instance. If left as None,
@@ -278,16 +226,18 @@ class StealthFactory(base.AbstractFactory, abc.ABC):
             
         """
         options = {
-            framework.NAMER(s.__name__): s for s in cls.__subclasses__}
+            configuration.KEYER(s.__name__): s for s in cls.__subclasses__}
         try:
             item = options[source]
         except KeyError:
             raise KeyError(f'No subclass {source} was found')
-        return cls._finalize_product(item = item, parameters = parameters)
+        return cls._finalize_factory_product(
+            item = item, 
+            parameters = parameters)
 
                            
 @dataclasses.dataclass
-class TypeFactory(base.AbstractFactory, abc.ABC):
+class TypeFactory(base.Factory, abc.ABC):
     """Mixin that returns subclass using the type or str name of the type.
 
     Unlike other factories, this one does not require an additional class 
@@ -305,7 +255,7 @@ class TypeFactory(base.AbstractFactory, abc.ABC):
     @classmethod
     def create(
         cls, 
-        source: str, 
+        source: Any, 
         parameters: Optional[MutableMapping[Hashable, Any]] = None) -> (
             TypeFactory | Type[TypeFactory]):
         """Returns a subclass or instance based on 'source' and 'parameters.
@@ -314,7 +264,15 @@ class TypeFactory(base.AbstractFactory, abc.ABC):
         named f'from_{snake-case str name of type}'. If you would prefer a 
         different naming format, you can subclass TypeFactory and override the 
         '_get_create_method_name' classmethod.
-
+        
+        Args:
+            source (Any): source to determine type to call the appropriate
+                construction method.
+            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
+                arguments to pass to a newly created instance. If passed, they 
+                will either be passed as arguments, or, if the stored item is
+                already an instance, added as attributes. Defaults to None.
+                
         Raises:
             AttributeError: If an appropriate method does not exist for the
                 data type of 'source.'
@@ -324,8 +282,8 @@ class TypeFactory(base.AbstractFactory, abc.ABC):
             
         """
         parameters = parameters or {}
-        suffix = framework.NAMER(type(source))
-        method_name = framework.METHOD_NAMER(item = suffix)
+        suffix = configuration.KEYER(type(source))
+        method_name = configuration.METHOD_NAMER(item = suffix)
         try:
             method = getattr(cls, method_name)
         except AttributeError:

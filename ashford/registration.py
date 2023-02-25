@@ -1,5 +1,5 @@
 """
-registration: dicts for storing subclasses and/or instances
+registration: registration mixins and decorators
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2023, Corey Rayburn Yung
 License: Apache-2.0
@@ -17,16 +17,16 @@ License: Apache-2.0
     limitations under the License.
 
 Contents: 
-    Registry (base.AbstractRegistry, camina.Dictionary): registry that stores
+    Anthology (base.Registry, camina.Dictionary): registry that stores
         classes or instances.
-    Anthology (base.AbstractRegistry, camina.ChainDictionary): registry that 
+    Corpus (base.Registry, camina.ChainDictionary): registry that 
         stores classes and instances.
-    Instancer (base.AbstractRegistrar): automatically registers instances in a 
-        Registry.
-    Subclasser (base.AbstractRegistrar): automatically registers subclasses in a
-        Registry.
-    Curator (base.AbstractRegistrar): automatically registers subclasses and 
-        instances in an Anthology.
+    Instancer (base.Registrar): automatically registers instances in a 
+        Anthology.
+    Subclasser (base.Registrar): automatically registers subclasses in a
+        Anthology.
+    Curator (base.Registrar): automatically registers subclasses and 
+        instances in an Corpus.
            
 To Do:
     Add decorators for each registry type (using the commented out code as a 
@@ -45,13 +45,13 @@ from typing import Any, ClassVar, Optional, Type
 import camina
 
 from . import base
-from . import framework
+from . import configuration
 
 
-""" Registry Classes """
+""" Anthology Classes """
     
 @dataclasses.dataclass
-class Registry(base.AbstractRegistry, camina.Dictionary):
+class Anthology(base.Registry, camina.Dictionary):
     """Stores registered instances or classes.
     
     Args:
@@ -76,11 +76,11 @@ class Registry(base.AbstractRegistry, camina.Dictionary):
         Args:
             item (object | Type[Any]): class or instance to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.NAMER'.
+                passed, a key will be created using 'configuration.KEYER'.
                 Defaults to None.
                 
         """
-        name = name or framework.NAMER(item)
+        name = name or configuration.KEYER(item)
         self.contents[name] = item
         return
             
@@ -95,42 +95,39 @@ class Registry(base.AbstractRegistry, camina.Dictionary):
                 
         """
         try:
-            return self.contents.withdraw(item = item)
-        except AttributeError:
+            return self.contents[item]
+        except (KeyError, TypeError):
+            if self.default_factory is None:
+                raise KeyError(f'{item} is not in the registry')
             try:
-                return self.contents[item]
-            except (KeyError, TypeError):
-                if self.default_factory is None:
-                    raise KeyError(f'{item} is not in the registry')
-                try:
-                    return self.default_factory()
-                except TypeError:
-                    return self.default_factory
+                return self.default_factory()
+            except TypeError:
+                return self.default_factory
    
        
 @dataclasses.dataclass  
-class Anthology(base.AbstractRegistry, camina.ChainDictionary):
+class Corpus(base.Registry, camina.ChainDictionary):
     """Stores classes instances and classes in a chained mapping.
     
     When searching for matches, instances are prioritized over classes.
     
-    The class limits the number of chained Registry instances to 2. 
-    Instances are stored in the first slot of 'contents'. And, subclasses are 
+    The class should limit the number of chained Anthology instances to 2. 
+    Instances are stored in the first slot of 'contents'. And, classes are 
     stored in the second.
     
     Args:
-        contents (MutableSequence[Registry[Hashable, Any]]): list of stored 
-            Registry instances. This is equivalent to the 'maps' attribute 
-            of a collections.ChainMap instance but uses a different name for 
-            compatibility with other mappings in Ashford. A separate 'maps' 
-            property is included which points to 'contents' to ensure 
+        contents (MutableSequence[MutableMapping[Hashable, Any]]): list of 
+            stored Anthology instances. This is equivalent to the 'maps' 
+            attribute of a collections.ChainMap instance but uses a different 
+            name for compatibility with other mappings in Ashford. A separate 
+            'maps' property is included which points to 'contents' to ensure 
             compatibility in the opposite direction.
         default_factory (Optional[Any]): default value to return or default 
             callable to use to create the default value.
         return_first (Optional[bool]): whether to only return the first match
-            found (True) or to search all of the stored Registry instances
+            found (True) or to search all of the stored Anthology instances
             (False). Defaults to True.
-        storage (Optional[Type[Registry]]): the class to use for each registry
+        storage (Optional[Type[Anthology]]): the class to use for each registry
             stored in 'contents'.
                     
     """
@@ -138,7 +135,7 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         dataclasses.field(default_factory = list))
     default_factory: Optional[Any] = None
     return_first: Optional[bool] = True
-    storage: Optional[Type[Registry]] = Registry  
+    storage: Optional[Type[MutableMapping]] = Anthology  
                  
     """ Initialization Methods """
                 
@@ -153,21 +150,21 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
     """ Properties """
      
     @property    
-    def instances(self) -> Registry:
+    def instances(self) -> Anthology:
         """Returns stored instances.
 
         Returns:
-            Registry: with stored instances.
+            Anthology: with stored instances.
             
         """
         return self.contents[0] 
      
     @property     
-    def subclasses(self) -> Registry:
-        """Returns stored subclasses.
+    def classes(self) -> Anthology:
+        """Returns stored classes.
 
         Returns:
-            Registry: with stored subclasses.
+            Anthology: with stored classes.
             
         """
         return self.contents[1] 
@@ -180,19 +177,19 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         name: Optional[Hashable] = None) -> None:
         """Adds 'item' to 'contents'.
 
-        If 'item' is a class, it will be registered in the 'subclasses' 
+        If 'item' is a class, it will be registered in the 'classes' 
         registry. If 'item' is an instance, it will be registered in the 
         'instances' registry and its class will be registered in the 
-        'subclasses' registry. However, if an instance is passed with a 'name'
+        'classes' registry. However, if an instance is passed with a 'name'
         argument, the 'name' will only be used for storing 'item' in the
         'instances' registry (and the key name will be inferred for the
-        'subclasses' registry).
+        'classes' registry).
 
         Args:
             item (object | Type[Any]): subclass or instance to add to the 
                 registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.NAMER'.
+                passed, a key will be created using 'configuration.KEYER'.
                 Defaults to None
                 
         """
@@ -212,15 +209,12 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         Args:
             item (object): instance to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.NAMER'.
+                passed, a key will be created using 'configuration.KEYER'.
                 Defaults to None
                 
         """
-        try:
-            self.instances.deposit(item = item, name = name)
-        except AttributeError:
-            name = name or framework.NAMER(item)
-            self.instances[name] = item
+        name = name or configuration.KEYER(item)
+        self.instances[name] = item
         return
         
     def deposit_subclass(
@@ -232,15 +226,12 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         Args:
             item (Type[Any]): subclass to add to the registry.
             name (Optional[Hashable]): key to use to store 'item'. If not
-                passed, a key will be created using 'framework.NAMER'.
+                passed, a key will be created using 'configuration.KEYER'.
                 Defaults to None
                 
         """
-        try:
-            self.subclasses.deposit(item = item, name = name)
-        except AttributeError:
-            name = name or framework.NAMER(item)
-            self.subclasses[name] = item
+        name = name or configuration.KEYER(item)
+        self.classes[name] = item
         return
      
     def withdraw(self, item: Hashable) -> Type[Any]:
@@ -256,13 +247,15 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
         matches = []
         for dictionary in self.contents:
             try:
-                matches.append(dictionary[item])
+                match = dictionary.get(item)
+                if match is not None:
+                    matches.append(match)
                 if self.return_first:
                     return matches[0]
             except KeyError:
                 pass
         if len(matches) == 0:
-            raise KeyError(f'{item} is not found in the Anthology')
+            raise KeyError(f'{item} is not found in the Corpus')
         if len(matches) > 1:
             return matches[0]
         else:
@@ -293,15 +286,15 @@ class Anthology(base.AbstractRegistry, camina.ChainDictionary):
 """ Registrar Classes """
    
 @dataclasses.dataclass
-class Instancer(base.AbstractRegistrar):
+class Instancer(base.Registrar):
     """Base class for subclass registration mixins.
     
     Attributes:
-        registry (ClassVar[Registry[str, object]]): stores subclass instances. 
-            Defaults to an instance of Registry.
+        registry (ClassVar[MutableMapping[Hashable, object]]): stores subclass 
+            instances. Defaults to an instance of Anthology.
             
     """
-    registry: ClassVar[Registry[str, object]] = Registry()
+    registry: ClassVar[MutableMapping[Hashable, object]] = Anthology()
 
     """ Initialization Methods """
     
@@ -312,19 +305,43 @@ class Instancer(base.AbstractRegistrar):
         with contextlib.suppress(AttributeError):
             super().__post_init__()
         # Automatically registers a new instance.
-        self.registry.deposit(item = self)
+        try:
+            self.__class__.registry.deposit(item = self)
+        except AttributeError:
+            key = configuration.KEYER(self)
+            self.__class__.registry[key] = self
 
+    """ Class Methods """
+        
+    @classmethod
+    def register(
+        cls, 
+        item: object | Type[Any], 
+        name: Optional[str] = None) -> None:
+        """Adds 'item' to a registry.
+        
+        Args:
+            item (object | Type[Any]): an instance or class to add to the 
+                registry.
+            name (Optional[str]): name to use as the key when 'item' is stored
+                in the registry. Defaults to None. If not passed, the function
+                in 'configuration.KEYER' may be used.
+        
+        """
+        cls.registry[name] = item
+        return
+   
 
 @dataclasses.dataclass
-class Subclasser(base.AbstractRegistrar):
+class Subclasser(base.Registrar):
     """Base class for subclass registration mixins.
     
     Attributes:
-        registry (ClassVar[Registry[str, Type[Any]]]): stores subclasses. 
-            Defaults to an instance of Registry.
+        registry (ClassVar[MutableMapping[Hashable, Type[Any]]): stores 
+            subclasses. Defaults to an instance of Anthology.
             
     """
-    registry: ClassVar[Registry[str, Type[Any]]] = Registry()
+    registry: ClassVar[MutableMapping[Hashable, Type[Any]]] = Anthology()
 
     """ Initialization Methods """
     
@@ -336,19 +353,43 @@ class Subclasser(base.AbstractRegistrar):
         with contextlib.suppress(AttributeError):
             super().__init_subclass__(*args, **kwargs) 
         # Automatically registers a new subclass.
-        cls.registry.deposit(item = cls)
+        try:
+            cls.registry.deposit(item = cls)
+        except AttributeError:
+            key = configuration.KEYER(cls)
+            cls.registry[key] = cls
 
+    """ Class Methods """
+        
+    @classmethod
+    def register(
+        cls, 
+        item: object | Type[Any], 
+        name: Optional[str] = None) -> None:
+        """Adds 'item' to a registry.
+        
+        Args:
+            item (object | Type[Any]): an instance or class to add to the 
+                registry.
+            name (Optional[str]): name to use as the key when 'item' is stored
+                in the registry. Defaults to None. If not passed, the function
+                in 'configuration.KEYER' may be used.
+        
+        """
+        cls.registry[name] = item
+        return
+    
  
 @dataclasses.dataclass
 class Curator(Instancer, Subclasser):
     """Base class for combined registration mixins.
     
     Attributes:
-        registry (ClassVar[Anthology]): stores subclasses and subclass 
-            instances. Defaults to an instance of Anthology.
+        registry (ClassVar[MutableMapping[Hashable, Any]]): stores subclasses 
+            and subclass instances. Defaults to an instance of Corpus.
             
     """
-    registry: ClassVar[Anthology] = Anthology()
+    registry: ClassVar[MutableMapping[Hashable, Any]] = Corpus()
 
     
 # """ Registration Decorator """
@@ -368,7 +409,7 @@ class Curator(Instancer, Subclasser):
 #     '__init_subclass__' method which is copied from the Registrar class.
         
 #     Wrapped functions and classes are automatically added to the stored registry
-#     with the 'namer' function. Virtual subclasses can be added using the
+#     with the 'keyer' function. Virtual subclasses can be added using the
 #     'register' method which is automatically added to the wrapped function or
 #     class.
  
@@ -377,14 +418,14 @@ class Curator(Instancer, Subclasser):
 #         default (dict[str, Callable[..., Optional[Any]]]): any items to include
 #              in the registry without requiring additional registration. Defaults
 #              to an empty dict.
-#         namer (Callable[[Any], str]): function to infer key names of wrapped
+#         keyer (Callable[[Any], str]): function to infer key names of wrapped
 #             functions and classes. Defaults to the 'namify' function in ashford.
     
 #     """
 #     wrapped: Callable[..., Optional[Any]]
 #     defaults: dict[str, Callable[..., Optional[Any]]] = dataclasses.field(
 #         default_factory = dict)
-#     namer: Callable[[Any], str] = dataclasses.field(default = framework.NAMER)
+#     keyer: Callable[[Any], str] = dataclasses.field(default = configuration.KEYER)
     
 #     """ Initialization Methods """
         
@@ -404,17 +445,17 @@ class Curator(Instancer, Subclasser):
 #         self.wrapped.register = self.register
 #         self.wrapped.registry = self.__class__.registry
 #         if inspect.isclass(self.wrapped):
-#             self.wrapped.__init_subclass__ = base.AbstractRegistrar.__init_subclass__
+#             self.wrapped.__init_subclass__ = base.Registrar.__init_subclass__
 #         return self.wrapped(*args, **kwargs)        
 
 #     """ Properties """
     
 #     @property
-#     def registry(self) -> MutableMapping[str, Type[Any]]:
+#     def registry(self) -> MutableMapping[Hashable, Type[Any]]:
 #         """Returns internal registry.
         
 #         Returns:
-#             MutableMapping[str, Type[Any]]: dict of str keys and values of
+#             MutableMapping[Hashable, Type[Any]]: dict of str keys and values of
 #                 registered items.
                 
 #         """
@@ -433,6 +474,6 @@ class Curator(Instancer, Subclasser):
         
 #         """
 #         # The default key for storing cls is its snakecase name.
-#         key = name or cls.namer(cls)
+#         key = name or cls.keyer(cls)
 #         cls.registry[key] = item
 #         return

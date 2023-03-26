@@ -56,8 +56,9 @@ __author__ = 'Corey Rayburn Yung'
 
 from .base import *
 from .configuration import *
-from .construction import *
+from .factories import *
 from .framework import *
-from .registration import *
+from .registrars import *
+from .registries import *
 from .unified import *
-from .validation import *
+from .validators import *

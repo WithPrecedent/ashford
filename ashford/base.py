@@ -17,20 +17,18 @@ License: Apache-2.0
     limitations under the License.
 
 Contents:
-    Descriptor (abc.ABC): interface for descriptors. '__get__' and '__set__' 
-        methods are required for all subclasses. A fully-featured '__set_name__'
-        method is provided which creates 'attribute_name', 'owner', and 
-        'private_name' attributes.
+
     Factory (abc.ABC): interface for factories. A 'create' class method is 
         required for subclasses.
     Registrar (abc.ABC): interface for classes that automatically register 
         classes and/or instances. A 'register' class method is provided for the 
-        default registration method in the 'registry' class attribute.
-    Registry (MutableMapping): interface for storing registered classes and/or 
-        instances. In addition to all dict and defaultdict methods, 'deposit' 
-        and 'withdraw' methods are provided for additional setting and getting
-        functionality. Any compatible mutable mapping can be used for internal
-        storage in the 'contents' attribute.
+        default registration method of classes and/or instances in the 
+        'registry' class attribute.
+    Registry (MutableMapping): stores registered classes and/or instances. In 
+        addition to all dict and defaultdict methods, 'deposit' and 'withdraw' 
+        methods are provided for additional setting and getting functionality. 
+        Any compatible mutable mapping can be used for internal storage in the 
+        'contents' attribute.
     Validator (abc.ABC): interface for type and value validators. Subclasses 
         must provide their own 'validate' methods.
 
@@ -49,83 +47,25 @@ from . import configuration
 
        
 @dataclasses.dataclass
-class Descriptor(abc.ABC):
-    """Base class for descriptors.
-    
-    Since Python currently lacks an abstract base class for descriptors, this
-    class sets the basic interface for one while offering a fully-featured 
-    '__set_name__' method. Since '__delete__' isn't a strict requirement for
-    a descriptor (typical use cases simply rely on a call to '__get__'), it is
-    not included as a subclass requirement.
-    
-    Attributes:
-        attribute_name (str): name of the attribute for the Descriptor instance 
-            in 'owner'. 
-        private_name (str): 'attribute_name' with a leading underscore added.
-            This attribute contains the name of an attribute in 'owner' (and not 
-            the descriptor) where the data for a descriptor will be stored.
-        owner (object): object of which the Descriptor instance is an attribute.
-            
-    """
-    
-    """ Required Subclass Methods """
-
-    @abc.abstractmethod
-    def __get__(
-        self, 
-        owner: object, 
-        objtype: Optional[Type[Any]] = None) -> Any:
-        """Returns item stored in 'private_name'.
-        Args:
-            owner (object): object of which this validator is an attribute.
-            objtype (Optional[Type[Any]]): class of 'owner'. Defaults to None.
-
-        Returns:
-            Any: stored item.
-            
-        """
-        pass  
-    
-    @abc.abstractmethod
-    def __set__(self, owner: object, value: Any) -> None:
-        """Stores 'value' in 'private_name' of 'owner'.
-
-        Args:
-            owner (object): object of which this validator is an attribute.
-            value (Any): item to store, after being validated.
-            
-        """
-        pass    
-        
-    """ Dunder Methods """
-    
-    def __set_name__(self, owner: object, name: str) -> None:
-        """Creates attributes based on 'owner' and 'item'
-
-        Args:
-            owner (object): object of which this validator is an attribute.
-            name (str): name of this attribute in 'owner'. 
-            
-        """
-        self.attribute_name = name
-        self.private_name = f'_{name}'
-        self.owner = owner
-        return
-
-
-@dataclasses.dataclass
 class Factory(abc.ABC):
     """Base class for factories."""
     
     """ Required Subclass Methods """
 
     @abc.abstractclassmethod
-    def create(cls, source: str, **kwargs: Any) -> Any:
+    def create(
+        cls,
+        source: str,
+        parameters: Optional[MutableMapping[Hashable, Any]] = None,
+        **kwargs: Any) -> Any:
         """Creates a subclass or instance based on 'source' and 'parameters'.
         
         Args:
             source (str): key or data for item stored in 'registry'.
-                
+            parameters: Optional[MutableMapping[Hashable, Any]]: keyword 
+                arguments to pass or add to a created instance. Defaults to 
+                None.       
+                         
         Returns:
             Any: created item(s).
                 
@@ -139,9 +79,9 @@ class Registrar(abc.ABC):
     
     A registrar is the class that sends an item to a registry. Its functionality
     is separated from the actual registry to facilitate mixing-and-matching of
-    different registry types with varied automated registrar processes in 
+    different registry types with varied automated registration processes in 
     ashford. If you wish to handle registration manually outside of the ashford
-    ecosystem, a Registrar is not strictly needed. 
+    ecosystem, a Registrar is not strictly required. 
     
     Attributes:
         registry (ClassVar[Registry[Hashable, object | Type[Any]]]): stores 
@@ -163,7 +103,7 @@ class Registrar(abc.ABC):
             item (object | Type[Any]): an instance or class to add to the 
                 registry.
             name (Optional[str]): name to use as the key when 'item' is stored
-                in the registry. Defaults to None. If not passed, the function
+                in 'registry'. Defaults to None. If not passed, the function
                 in 'configuration.KEYER' may be used.
         
         """
@@ -240,7 +180,7 @@ class Registry(MutableMapping):
         keys: Sequence[Hashable], 
         value: Any, 
         **kwargs: Any) -> Registry:
-        """Emulates the 'fromkeys' class method from a python dict.
+        """Emulates the 'fromkeys' class method of a Python dict.
 
         Args:
             keys (Sequence[Hashable]): items to be keys in a new Registry.
@@ -354,8 +294,7 @@ class Registry(MutableMapping):
     def withdraw(
         self, 
         item: Hashable, 
-        parameters: Optional[MutableMapping[Hashable, Any]]) -> (
-            object | Type[Any]):
+        parameters: Optional[MutableMapping[Hashable, Any]] = None) -> Any:
         """Returns an instance or class based on 'item'.
         
         Args:
@@ -366,13 +305,11 @@ class Registry(MutableMapping):
                 be returned as is.
                            
         Returns:
-            object | Type[Any]: instance or class from stored items.
+            Any: instance or class from stored items.
                 
         """
         value = self.get(key = item)
-        if value is configuration.MISSING:
-            raise KeyError(f'{item} is not in the registry')
-        elif parameters is None:
+        if parameters is None:
             return item  
         elif inspect.isclass(item):
             return item(**parameters)

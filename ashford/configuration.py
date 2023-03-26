@@ -33,7 +33,7 @@ import camina
 
 KEYER: Callable[[object | Type[Any]], str] = camina.namify
 METHOD_NAMER: Callable[[object | Type[Any]], str] = lambda x: f'from_{KEYER(x)}'
-REMOVABLE_PREFIXES: list = ['project_']
+REMOVABLE_PREFIXES: list[str] = ['project_']
 
 
 @dataclasses.dataclass
@@ -52,4 +52,6 @@ class MISSING_VALUE(object):
     pass
 
 
+# MISSING, instance of MISSING_VALUE, should be used for missing values as an 
+# alternative to None. This provides a fuller repr and traceback.
 MISSING = MISSING_VALUE()  

@@ -46,19 +46,19 @@ def set_keyer(keyer: Callable[[object | Type[Any]], str]) -> None:
     else:
         raise TypeError('keyer argument must be a callable')
 
-def set_method_keyer(keyer: Callable[[object | Type[Any]], str]) -> None:
+def set_method_namer(namer: Callable[[object | Type[Any]], str]) -> None:
     """Sets the global default function used to name factory methods.
 
     Args:
-        keyer (Callable[[object | Type[Any]], str]): function that returns a 
+        namer (Callable[[object | Type[Any]], str]): function that returns a 
             str name of any item passed.
 
     Raises:
         TypeError: if 'keyer' is not callable.
         
     """
-    if isinstance(keyer, Callable):
-        configuration.METHOD_NAMER = keyer
+    if isinstance(namer, Callable):
+        configuration.METHOD_NAMER = namer
     else:
         raise TypeError('keyer argument must be a callable')
     

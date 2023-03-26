@@ -1,5 +1,5 @@
 """
-construction: factory mixins and decorators
+factories: tools to construct classes and/or instances
 Corey Rayburn Yung <coreyrayburnyung@gmail.com>
 Copyright 2020-2023, Corey Rayburn Yung
 License: Apache-2.0
@@ -48,7 +48,7 @@ from typing import Any, ClassVar, Optional, Type
 
 from . import base
 from . import configuration
-from . import registration
+from . import registrars
 
 
     """ Private Methods """
@@ -90,7 +90,7 @@ class AnthologyFactory(base.Factory, abc.ABC):
             instances (but not both). Defaults to an instance of Anthology.
             
     """
-    registry: ClassVar[MutableMapping[Hashable, Any]] = registration.Anthology()
+    registry: ClassVar[MutableMapping[Hashable, Any]] = registrars.Anthology()
         
     """ Class Methods """
 
